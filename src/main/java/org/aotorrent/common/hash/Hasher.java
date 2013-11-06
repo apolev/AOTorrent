@@ -1,5 +1,6 @@
 package org.aotorrent.common.hash;
 
+import org.aotorrent.common.Torrent;
 import org.apache.commons.codec.digest.DigestUtils;
 
 import java.io.BufferedInputStream;
@@ -53,14 +54,29 @@ public class Hasher {
                 }
 
                 byte[] hash = DigestUtils.sha1(buffer);
-                pieces.append(new String(hash));
+                pieces.append(new String(hash, Torrent.DEFAULT_TORRENT_ENCODING));
             }
 
+
+            //TODO check if it is the last chunk
             if (bIS.available() > 0) {
-                remainder = bIS.available();
-                if (bIS.read(buffer, 0, remainder) != remainder) {
-                    throw new IOException("Some strange error. Read less than expected.");
+                if (fileNames.indexOf(fileName) == (fileNames.size() - 1)) {
+                    byte[] lastChunk = new byte[bIS.available()];
+
+                    if (bIS.read(lastChunk) != lastChunk.length) {
+                        throw new IOException("Some strange error. Read less than expected.");
+                    }
+
+                    byte[] hash = DigestUtils.sha1(lastChunk);
+                    pieces.append(new String(hash, Torrent.DEFAULT_TORRENT_ENCODING));
+
+                } else {
+                    remainder = bIS.available();
+                    if (bIS.read(buffer, 0, remainder) != remainder) {
+                        throw new IOException("Some strange error. Read less than expected.");
+                    }
                 }
+
             }
 
         }
