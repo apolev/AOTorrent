@@ -4,6 +4,7 @@ import org.aotorrent.common.Torrent;
 import org.apache.commons.codec.digest.DigestUtils;
 
 import java.io.BufferedInputStream;
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.List;
@@ -15,14 +16,14 @@ import java.util.List;
  */
 public class Hasher {
 
-    public static String getPieces(List<String> fileNames, int pieceLength) throws IOException {
+    public static String getPieces(List<File> files, int pieceLength) throws IOException {
         StringBuilder pieces = new StringBuilder();
         byte[] buffer = new byte[pieceLength];
 
         int remainder = 0;
 
-        for (String fileName : fileNames) {
-            FileInputStream fIS = new FileInputStream(fileName);
+        for (File file : files) {
+            FileInputStream fIS = new FileInputStream(file);
             BufferedInputStream bIS = new BufferedInputStream(fIS);
 
             if (remainder > 0) {
@@ -60,7 +61,7 @@ public class Hasher {
 
             //TODO check if it is the last chunk
             if (bIS.available() > 0) {
-                if (fileNames.indexOf(fileName) == (fileNames.size() - 1)) {
+                if (files.indexOf(file) == (files.size() - 1)) {
                     byte[] lastChunk = new byte[bIS.available()];
 
                     if (bIS.read(lastChunk) != lastChunk.length) {

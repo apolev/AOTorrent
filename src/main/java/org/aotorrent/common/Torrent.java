@@ -4,9 +4,11 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.sun.istack.internal.NotNull;
 import com.sun.istack.internal.Nullable;
+import org.aotorrent.common.bencode.InvalidBEncodingException;
+import org.aotorrent.common.bencode.Value;
+import org.aotorrent.common.bencode.Writer;
 import org.aotorrent.common.hash.Hasher;
 import org.apache.commons.codec.digest.DigestUtils;
-import org.bencode.Value;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -14,6 +16,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -26,7 +29,7 @@ import java.util.Map;
 public class Torrent {
     private static final Logger logger = LoggerFactory.getLogger(Torrent.class);
     private static final String DEFAULT_COMMENT = "no comments";
-    private static final String DEFAULT_CREATED_BY = "Created by AOTorrent";
+    private static final String DEFAULT_CREATED_BY = "AOTorrent";
     public static final String DEFAULT_TORRENT_ENCODING = "ISO-8859-1";
     private static final int DEFAULT_PIECE_LENGTH = 512 * 1024;
 
@@ -38,6 +41,7 @@ public class Torrent {
     private final int pieceLength = DEFAULT_PIECE_LENGTH;
     private final String pieces;
     private final boolean singleFile = false;
+    private final File root;
     private final List<TorrentFile> files;
 
 
@@ -46,11 +50,10 @@ public class Torrent {
         private final String md5sum;
         private final String path;
 
-        TorrentFile(String fileName) throws IOException {
-            File file = new File(fileName);
-            length = file.length();
-            md5sum = new String(DigestUtils.md5(new FileInputStream(file)), DEFAULT_TORRENT_ENCODING);
-            path = fileName;
+        TorrentFile(File fileName) throws IOException {
+            length = fileName.length();
+            md5sum = new String(DigestUtils.md5(new FileInputStream(fileName)), DEFAULT_TORRENT_ENCODING);
+            path = fileName.getPath();
         }
 
         public long getLength() {
@@ -71,18 +74,19 @@ public class Torrent {
         List<List<String>> announcesOut = Lists.newArrayList();
         announcesOut.add(announcesIn);
 
-        List<String> fileNames = Lists.newArrayList(fileName);
+        File file = new File(fileName);
+        List<File> fileNames = Lists.newArrayList(file);
 
-        return new Torrent(announcesOut, fileNames, null, null);
+        return new Torrent(announcesOut, file.getParentFile(), fileNames, null, null);
     }
 
-    public Torrent(@NotNull final List<List<String>> announce, @NotNull List<String> files, @Nullable String comment, @Nullable String createdBy) throws IOException {
+    public Torrent(@NotNull final List<List<String>> announce, File root, @NotNull List<File> files, @Nullable String comment, @Nullable String createdBy) throws IOException {
 
         this.announce = announce;
-
+        this.root = root;
         List<TorrentFile> torrentFiles = Lists.newArrayList();
 
-        for (String fileName : files) {
+        for (File fileName : files) {
             TorrentFile torrentFile = new TorrentFile(fileName);
             torrentFiles.add(torrentFile);
         }
@@ -97,19 +101,46 @@ public class Torrent {
 
     }
 
-    public void save(OutputStream outputStream) {
+    public void save(OutputStream outputStream) throws IOException, InvalidBEncodingException {
         Map<String, Value> torrentMap = Maps.newHashMap();
         torrentMap.put("announce", new Value(announce.get(0).get(0)));
         //TODO announceList
         torrentMap.put("comment", new Value(comment));
-        torrentMap.put("creation date", new Value(creationDate.getTime()));
+        torrentMap.put("creation date", new Value(creationDate.getTime() / 1000));
         torrentMap.put("created by", new Value(createdBy));
+
 
         if (singleFile) {
             //TODO
         } else {
-            //TODO
+            Map<String, Value> info = Maps.newHashMap();
+            String name = (root != null) ? root.getName() : files.get(0).getPath();  //TODO proper name creation
+            info.put("name", new Value(name));
+            info.put("piece length", new Value(DEFAULT_PIECE_LENGTH));
+
+            info.put("pieces", new Value(pieces));
+
+            List<Value> filesList = Lists.newArrayList();
+
+            for (TorrentFile file : files) {
+                Map<String, Value> fileInfo = Maps.newHashMap();
+
+                fileInfo.put("length", new Value(file.getLength()));
+                fileInfo.put("md5sum", new Value(file.getMd5sum()));
+                List<String> splittedPath = Arrays.asList(file.getPath().split("/"));
+                List<Value> splittedPathValue = Lists.newArrayList();
+                for (String pieceOfPath : splittedPath) {
+                    splittedPathValue.add(new Value(pieceOfPath));
+                }
+                fileInfo.put("path", new Value(splittedPathValue));
+
+                filesList.add(new Value(fileInfo));
+            }
+            info.put("files", new Value(filesList));
+            torrentMap.put("info", new Value(info));
         }
+
+        Writer.writeOut(outputStream, torrentMap);
     }
 
 }
