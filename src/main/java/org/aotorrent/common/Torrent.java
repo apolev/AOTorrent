@@ -2,6 +2,7 @@ package org.aotorrent.common;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 import com.sun.istack.internal.NotNull;
 import com.sun.istack.internal.Nullable;
 import org.aotorrent.common.bencode.InvalidBEncodingException;
@@ -12,14 +13,10 @@ import org.apache.commons.codec.digest.DigestUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
+import java.io.*;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.util.*;
 
 /**
  * User: dnapolov
@@ -34,6 +31,7 @@ public class Torrent {
     private static final int DEFAULT_PIECE_LENGTH = 512 * 1024;
 
     private final List<List<String>> announce;
+
     private final Date creationDate = new Date();
     private final String comment;
     private final String createdBy;
@@ -43,9 +41,11 @@ public class Torrent {
     private final boolean singleFile = false;
     private final File root;
     private final List<TorrentFile> files;
-
+    private final byte[] infoHash;
 
     private class TorrentFile {
+
+
         private final long length;
         private final String md5sum;
         private final String path;
@@ -67,6 +67,7 @@ public class Torrent {
         public String getPath() {
             return path;
         }
+
     }
 
     public static Torrent create(String announce, String fileName) throws IOException {
@@ -97,7 +98,7 @@ public class Torrent {
 
         this.comment = (comment != null) ? comment : DEFAULT_COMMENT;
         this.createdBy = (createdBy != null) ? createdBy : DEFAULT_CREATED_BY;
-
+        this.infoHash = getInfoHash();
 
     }
 
@@ -113,34 +114,73 @@ public class Torrent {
         if (singleFile) {
             //TODO
         } else {
-            Map<String, Value> info = Maps.newHashMap();
-            String name = (root != null) ? root.getName() : files.get(0).getPath();  //TODO proper name creation
-            info.put("name", new Value(name));
-            info.put("piece length", new Value(DEFAULT_PIECE_LENGTH));
-
-            info.put("pieces", new Value(pieces));
-
-            List<Value> filesList = Lists.newArrayList();
-
-            for (TorrentFile file : files) {
-                Map<String, Value> fileInfo = Maps.newHashMap();
-
-                fileInfo.put("length", new Value(file.getLength()));
-                fileInfo.put("md5sum", new Value(file.getMd5sum()));
-                List<String> splittedPath = Arrays.asList(file.getPath().split("/"));
-                List<Value> splittedPathValue = Lists.newArrayList();
-                for (String pieceOfPath : splittedPath) {
-                    splittedPathValue.add(new Value(pieceOfPath));
-                }
-                fileInfo.put("path", new Value(splittedPathValue));
-
-                filesList.add(new Value(fileInfo));
-            }
-            info.put("files", new Value(filesList));
+            Map<String, Value> info = generateInfo();
             torrentMap.put("info", new Value(info));
         }
 
         Writer.writeOut(outputStream, torrentMap);
     }
+
+    private Map<String, Value> generateInfo() {
+        Map<String, Value> info = Maps.newHashMap();
+        String name = (root != null) ? root.getName() : files.get(0).getPath();  //TODO proper name creation
+        info.put("name", new Value(name));
+        info.put("piece length", new Value(DEFAULT_PIECE_LENGTH));
+
+        info.put("pieces", new Value(pieces));
+
+        List<Value> filesList = Lists.newArrayList();
+
+        for (TorrentFile file : files) {
+            Map<String, Value> fileInfo = Maps.newHashMap();
+
+            fileInfo.put("length", new Value(file.getLength()));
+            fileInfo.put("md5sum", new Value(file.getMd5sum()));
+            List<String> splittedPath = Arrays.asList(file.getPath().split("/"));
+            List<Value> splittedPathValue = Lists.newArrayList();
+            for (String pieceOfPath : splittedPath) {
+                splittedPathValue.add(new Value(pieceOfPath));
+            }
+            fileInfo.put("path", new Value(splittedPathValue));
+
+            filesList.add(new Value(fileInfo));
+        }
+        info.put("files", new Value(filesList));
+        return info;
+    }
+
+    public byte[] getInfoHash() {
+        Map<String, Value> info = generateInfo();
+
+        ByteArrayOutputStream os = new ByteArrayOutputStream();
+
+        try {
+            Writer.writeOut(os, info);
+            return os.toByteArray();
+        } catch (IOException | InvalidBEncodingException e) {
+            e.printStackTrace();
+        }
+
+        return null;
+    }
+
+    public Set<URL> getTrackers() {
+        Set<URL> trackerUrls = Sets.newLinkedHashSet();
+
+        for (List<String> list : announce) {
+            for (String trackerUrl : list) {
+                try {
+                    URL url = new URL(trackerUrl);
+                    trackerUrls.add(url);
+                } catch (MalformedURLException e) {
+                    //Ignoring this url
+                }
+
+            }
+        }
+
+        return trackerUrls;
+    }
+
 
 }
