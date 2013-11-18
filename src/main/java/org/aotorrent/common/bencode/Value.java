@@ -1,5 +1,7 @@
 package org.aotorrent.common.bencode;
 
+import com.sun.istack.internal.Nullable;
+
 import java.util.List;
 import java.util.Map;
 
@@ -13,14 +15,24 @@ public class Value {
     Object value;
 
     public Value(Object value) {
-        this.value = value;
+        if (value instanceof Integer) {
+            this.value = ((Integer) value).longValue();
+        } else {
+            this.value = value;
+        }
     }
 
+    @Nullable
     public Object getValue() {
         return value;
     }
 
+    @Nullable
     public String getValueClass() {
+
+        if (value == null) {
+            return null;
+        }
         if (value instanceof Number) {
             return "Number";
         }
@@ -68,5 +80,14 @@ public class Value {
     @Override
     public String toString() {
         return value.toString();
+    }
+
+    @Override
+    public boolean equals(Object value) {
+        if (value instanceof Value) {
+            return this.value.equals(((Value) value).getValue());
+        } else {
+            return this.value.equals(value);
+        }
     }
 }

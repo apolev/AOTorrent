@@ -32,8 +32,12 @@ public class Parser {
         return result;
     }
 
-    public Map<String, Value> parseOne() throws IOException, InvalidBEncodingException {
+    public Map<String, Value> parseMap() throws IOException, InvalidBEncodingException {
         return decodeMap().getMap();
+    }
+
+    public Value parseOne() throws IOException, InvalidBEncodingException {
+        return getNext();
     }
 
     private Value getNext() throws InvalidBEncodingException, IOException {
@@ -86,10 +90,16 @@ public class Parser {
 
         int got = is.read();
 
+        // first character
         if (got == '-') {
             negative = true;
+        } else if (Character.isDigit(got)) {
+            number = Character.digit(got, 10);
+        } else {
+            throw new InvalidBEncodingException("Invalid byte sequence: " + (char) got);
         }
 
+        // rest characters
         while (Character.isDigit(got = is.read())) {
             number = number * 10 + Character.digit(got, 10);
         }
@@ -184,6 +194,11 @@ public class Parser {
     }
 
     public static Map<String, Value> parse(InputStream is) throws IOException, InvalidBEncodingException {
+        Parser parser = new Parser(is);
+        return parser.parseMap();
+    }
+
+    public static Value parseOne(InputStream is) throws IOException, InvalidBEncodingException {
         Parser parser = new Parser(is);
         return parser.parseOne();
     }
