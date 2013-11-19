@@ -157,7 +157,9 @@ public class Torrent {
         try {
             Writer.writeOut(os, info);
             return os.toByteArray();
-        } catch (IOException | InvalidBEncodingException e) {
+        } catch (IOException e) {
+            e.printStackTrace();
+        } catch (InvalidBEncodingException e) {
             e.printStackTrace();
         }
 

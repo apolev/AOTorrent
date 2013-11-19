@@ -47,33 +47,42 @@ public class TrackerConnection implements Runnable {
 
     @Override
     public void run() {
-        TrackerRequest request = new TrackerRequest(url, infoHash, peerId, port, uploaded, downloaded, left, compact, noPeerId, numwant, trackerId);
-        HttpURLConnection connection = null;
-        try {
-            connection = (HttpURLConnection) url.openConnection();
-            connection.connect();
-            InputStream reply = connection.getInputStream();
+        while (true) {
+            TrackerRequest request = new TrackerRequest(url, infoHash, peerId, port, uploaded, downloaded, left, compact, noPeerId, numwant, trackerId);
+            HttpURLConnection connection = null;
+            try {
+                connection = (HttpURLConnection) url.openConnection();
+                connection.connect();
+                InputStream reply = connection.getInputStream();
 
-            TrackerResponse response = new TrackerResponse(reply);
-            synchronized (this) {
-                if (response.isFailed()) {
+                TrackerResponse response = new TrackerResponse(reply);
+                synchronized (this) {
+                    if (response.isFailed()) {
+                        nextRequest = new Date(System.currentTimeMillis() + (300 * 1000));
+                    } else {
+                        peers = response.getPeers();
+                        trackerId = response.getTrackerId();
+                        seeders = response.getComplete();
+                        leechers = response.getIncomplete();
+                        nextRequest = new Date(System.currentTimeMillis() + (response.getInterval() * 1000));
+
+                    }
+                }
+
+            } catch (IOException e) {
+                synchronized (this) {
                     nextRequest = new Date(System.currentTimeMillis() + (300 * 1000));
-                } else {
-                    peers.putAll(response.getPeers());
-                    trackerId = response.getTrackerId();
-                    seeders = response.getComplete();
-                    leechers = response.getIncomplete();
-                    nextRequest = new Date(System.currentTimeMillis() + (response.getInterval() * 1000));
-
+                }
+            } catch (InvalidBEncodingException e) {
+                synchronized (this) {
+                    nextRequest = new Date(System.currentTimeMillis() + (300 * 1000));
+                }
+            } finally {
+                if (connection != null) {
+                    connection.disconnect();
                 }
             }
-
-        } catch (IOException | InvalidBEncodingException e) {
-            synchronized (this) {
-                nextRequest = new Date(System.currentTimeMillis() + (300 * 1000));
-            }
         }
-
     }
 
     public Date getNextRequest() {

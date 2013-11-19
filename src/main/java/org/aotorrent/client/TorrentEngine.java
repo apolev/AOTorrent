@@ -9,6 +9,7 @@ import org.aotorrent.common.connection.TrackerConnection;
 import java.net.URL;
 import java.util.Date;
 import java.util.Set;
+import java.util.concurrent.Semaphore;
 
 /**
  * Project: AOTorrent
@@ -20,6 +21,7 @@ public class TorrentEngine {
     private Set<TrackerConnection> trackerConnections = Sets.newLinkedHashSet();
     private Set<PeerConnection> peerConnections = Sets.newHashSet();
     private Set<Piece> pieces = Sets.newHashSet();
+    private final Semaphore trackersUpdate;
     private byte[] peerId = "-AO0001-000000000000".getBytes();      //TODO need to give right peerid
     private final Torrent torrent;
 
@@ -27,6 +29,8 @@ public class TorrentEngine {
         this.torrent = torrent; //TODO
 
         Set<URL> trackers = torrent.getTrackers();
+
+        trackersUpdate = new Semaphore(trackers.size());
 
         for (URL trackerUrl : trackers) {
             TrackerConnection trackerConnection = new TrackerConnection(trackerUrl, torrent.getInfoHash(), peerId, null, 6969);
@@ -39,10 +43,13 @@ public class TorrentEngine {
 
         @Override
         public void run() {
-            for (TrackerConnection trackerConnection : trackerConnections) {
-                synchronized (trackerConnection) {
-                    if (trackerConnection.getNextRequest() != null && trackerConnection.getNextRequest().before(new Date())) {
-                        new Thread(trackerConnection).start();
+            while (true) {
+                trackersUpdate.release();
+                for (TrackerConnection trackerConnection : trackerConnections) {
+                    synchronized (trackerConnection) {
+                        if (trackerConnection.getNextRequest() != null && trackerConnection.getNextRequest().before(new Date())) {
+                            new Thread(trackerConnection).start();
+                        }
                     }
                 }
             }
