@@ -4,10 +4,12 @@ import org.aotorrent.common.bencode.InvalidBEncodingException;
 import org.aotorrent.common.protocol.TrackerRequest;
 import org.aotorrent.common.protocol.TrackerResponse;
 
+import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.InetAddress;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.Date;
 import java.util.Map;
@@ -34,6 +36,7 @@ public class TrackerConnection implements Runnable {
     private final int numwant = 50;
     private String trackerId = null;
     private Date nextRequest = null;
+    private boolean shutdown = false;
 
     private Map<InetAddress, Integer> peers;
 
@@ -47,40 +50,54 @@ public class TrackerConnection implements Runnable {
 
     @Override
     public void run() {
-        while (true) {
-            TrackerRequest request = new TrackerRequest(url, infoHash, peerId, port, uploaded, downloaded, left, compact, noPeerId, numwant, trackerId);
-            HttpURLConnection connection = null;
+        while (!shutdown) {
             try {
-                connection = (HttpURLConnection) url.openConnection();
-                connection.connect();
-                InputStream reply = connection.getInputStream();
-
-                TrackerResponse response = new TrackerResponse(reply);
-                synchronized (this) {
-                    if (response.isFailed()) {
-                        nextRequest = new Date(System.currentTimeMillis() + (300 * 1000));
-                    } else {
-                        peers = response.getPeers();
-                        trackerId = response.getTrackerId();
-                        seeders = response.getComplete();
-                        leechers = response.getIncomplete();
-                        nextRequest = new Date(System.currentTimeMillis() + (response.getInterval() * 1000));
-
-                    }
+                if (nextRequest != null && nextRequest.after(new Date())) {
+                    Thread.sleep(nextRequest.getTime() - new Date().getTime());
+                } else {
+                    getPeers();
                 }
+            } catch (InterruptedException e) {
+            }
+        }
+    }
 
-            } catch (IOException e) {
-                synchronized (this) {
+    private void getPeers() {
+        TrackerRequest request = new TrackerRequest(url, infoHash, peerId, port, uploaded, downloaded, left, compact, noPeerId, numwant, trackerId);
+        HttpURLConnection connection = null;
+        try {
+            connection = (HttpURLConnection) request.createRequest().openConnection();
+            ;
+            connection.connect();
+
+            InputStream reply = connection.getInputStream();
+            BufferedInputStream bis = new BufferedInputStream(reply);
+            TrackerResponse response = new TrackerResponse(bis);
+            synchronized (this) {
+                if (response.isFailed()) {
                     nextRequest = new Date(System.currentTimeMillis() + (300 * 1000));
+                } else {
+                    peers = response.getPeers();
+                    trackerId = response.getTrackerId();
+                    seeders = response.getComplete();
+                    leechers = response.getIncomplete();
+                    nextRequest = new Date(System.currentTimeMillis() + (response.getInterval() * 1000));
+
                 }
-            } catch (InvalidBEncodingException e) {
-                synchronized (this) {
-                    nextRequest = new Date(System.currentTimeMillis() + (300 * 1000));
-                }
-            } finally {
-                if (connection != null) {
-                    connection.disconnect();
-                }
+            }
+        } catch (IOException e) {
+            synchronized (this) {
+                nextRequest = new Date(System.currentTimeMillis() + (300 * 1000));
+            }
+        } catch (InvalidBEncodingException e) {
+            synchronized (this) {
+                nextRequest = new Date(System.currentTimeMillis() + (300 * 1000));
+            }
+        } catch (URISyntaxException e) {
+            e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+        } finally {
+            if (connection != null) {
+                connection.disconnect();
             }
         }
     }

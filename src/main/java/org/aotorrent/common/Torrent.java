@@ -6,10 +6,12 @@ import com.google.common.collect.Sets;
 import com.sun.istack.internal.NotNull;
 import com.sun.istack.internal.Nullable;
 import org.aotorrent.common.bencode.InvalidBEncodingException;
+import org.aotorrent.common.bencode.Parser;
 import org.aotorrent.common.bencode.Value;
 import org.aotorrent.common.bencode.Writer;
 import org.aotorrent.common.hash.Hasher;
 import org.apache.commons.codec.digest.DigestUtils;
+import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -46,14 +48,22 @@ public class Torrent {
     private class TorrentFile {
 
 
-        private final long length;
-        private final String md5sum;
         private final String path;
 
-        TorrentFile(File fileName) throws IOException {
-            length = fileName.length();
-            md5sum = new String(DigestUtils.md5(new FileInputStream(fileName)), DEFAULT_TORRENT_ENCODING);
-            path = fileName.getPath();
+        private final long length;
+
+        private final String md5sum;
+
+        TorrentFile(File file) throws IOException {
+            length = file.length();
+            md5sum = new String(DigestUtils.md5(new FileInputStream(file)), DEFAULT_TORRENT_ENCODING);
+            path = file.getPath();
+        }
+
+        private TorrentFile(String path, long length, String md5sum) {
+            this.path = path;
+            this.length = length;
+            this.md5sum = md5sum;
         }
 
         public long getLength() {
@@ -100,6 +110,32 @@ public class Torrent {
         this.createdBy = (createdBy != null) ? createdBy : DEFAULT_CREATED_BY;
         this.infoHash = getInfoHash();
 
+    }
+
+    public Torrent(@NotNull final InputStream is) throws IOException, InvalidBEncodingException {
+        Map<String, Value> parsed = Parser.parse(is);
+        String announceURL = parsed.get("announce").getString();
+        announce = Arrays.asList((List<String>) Arrays.asList(announceURL));
+        comment = parsed.get("comment").getString();
+        createdBy = parsed.get("created by").getString();
+        Map<String, Value> info = parsed.get("info").getMap();
+        root = new File(info.get("name").getString());
+        pieces = info.get("pieces").getString();
+
+        files = Lists.newArrayList();
+
+        for (Value file : info.get("files").getList()) {
+            Map<String, Value> valueMap = file.getMap();
+
+            TorrentFile tf = new TorrentFile(
+                    StringUtils.join(valueMap.get("path").getList(), '\\'),
+                    valueMap.get("length").getLong(),
+                    "");
+
+            files.add(tf);
+        }
+
+        infoHash = new byte[]{100, 100};  //TODO proper infohash getting
     }
 
     public void save(OutputStream outputStream) throws IOException, InvalidBEncodingException {
@@ -156,7 +192,8 @@ public class Torrent {
 
         try {
             Writer.writeOut(os, info);
-            return os.toByteArray();
+            byte[] digest = DigestUtils.sha1(os.toByteArray());
+            return digest;
         } catch (IOException e) {
             e.printStackTrace();
         } catch (InvalidBEncodingException e) {

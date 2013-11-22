@@ -6,10 +6,11 @@ import org.aotorrent.common.Torrent;
 import org.aotorrent.common.connection.PeerConnection;
 import org.aotorrent.common.connection.TrackerConnection;
 
+import java.net.InetAddress;
 import java.net.URL;
-import java.util.Date;
 import java.util.Set;
-import java.util.concurrent.Semaphore;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  * Project: AOTorrent
@@ -17,42 +18,36 @@ import java.util.concurrent.Semaphore;
  * Date:    11/8/13
  */
 public class TorrentEngine {
+    private static final int DEFAULT_PORT = 6969;
 
     private Set<TrackerConnection> trackerConnections = Sets.newLinkedHashSet();
     private Set<PeerConnection> peerConnections = Sets.newHashSet();
     private Set<Piece> pieces = Sets.newHashSet();
-    private final Semaphore trackersUpdate;
+    private ExecutorService trackerConnectionThreads;
     private byte[] peerId = "-AO0001-000000000000".getBytes();      //TODO need to give right peerid
     private final Torrent torrent;
 
-    public TorrentEngine(Torrent torrent) {
+    private TorrentEngine(Torrent torrent) {
         this.torrent = torrent; //TODO
+    }
+
+    private void initTrackers(InetAddress ip, int port) {
 
         Set<URL> trackers = torrent.getTrackers();
 
-        trackersUpdate = new Semaphore(trackers.size());
+        trackerConnectionThreads = Executors.newFixedThreadPool(trackers.size());
 
         for (URL trackerUrl : trackers) {
-            TrackerConnection trackerConnection = new TrackerConnection(trackerUrl, torrent.getInfoHash(), peerId, null, 6969);
-            new Thread(trackerConnection).start();
+            TrackerConnection trackerConnection = new TrackerConnection(trackerUrl, torrent.getInfoHash(), peerId, ip, port);
+            trackerConnectionThreads.submit(trackerConnection);
             trackerConnections.add(trackerConnection);
         }
     }
 
-    private class TrackerConnectionsKeeper implements Runnable {
+    public static TorrentEngine createTorrentEngine(Torrent torrent) {
+        TorrentEngine torrentEngine = new TorrentEngine(torrent);
+        torrentEngine.initTrackers(null, DEFAULT_PORT);
 
-        @Override
-        public void run() {
-            while (true) {
-                trackersUpdate.release();
-                for (TrackerConnection trackerConnection : trackerConnections) {
-                    synchronized (trackerConnection) {
-                        if (trackerConnection.getNextRequest() != null && trackerConnection.getNextRequest().before(new Date())) {
-                            new Thread(trackerConnection).start();
-                        }
-                    }
-                }
-            }
-        }
+        return torrentEngine;
     }
 }

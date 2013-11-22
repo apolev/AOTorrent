@@ -49,8 +49,8 @@ public class TrackerResponse {
             interval = (int) responseMap.get("interval").getLong();
             minInterval = (responseMap.containsKey("min interval")) ? (int) responseMap.get("min interval").getLong() : interval;
             trackerId = (responseMap.containsKey("tracker id")) ? responseMap.get("tracker id").getString() : null;
-            complete = (int) responseMap.get("complete").getLong();
-            incomplete = (int) responseMap.get("incomplete").getLong();
+            complete = (responseMap.containsKey("complete")) ? (int) responseMap.get("complete").getLong() : 0;
+            incomplete = (responseMap.containsKey("incomplete")) ? (int) responseMap.get("incomplete").getLong() : 0;
 
             if (responseMap.get("peers").getValueClass().equals("String")) {
                 byte[] encodedPeers = responseMap.get("peers").getString().getBytes();
@@ -60,11 +60,12 @@ public class TrackerResponse {
                 }
 
                 for (int i = 0; i < (encodedPeers.length / 6); i++) {
-                    byte[] rawIP = Arrays.copyOfRange(encodedPeers, i * 6, i * 6 + 3);
+                    byte[] rawIP = Arrays.copyOfRange(encodedPeers, i * 6, i * 6 + 4);
                     InetAddress ip = InetAddress.getByAddress(rawIP);
 
-                    byte[] rawPort = Arrays.copyOfRange(encodedPeers, i * 6 + 4, i * 6 + 5);
-                    int port = java.nio.ByteBuffer.wrap(rawPort).getInt();
+                    byte[] rawPort = Arrays.copyOfRange(encodedPeers, i * 6 + 4, i * 6 + 6);
+                    int port = ((rawPort[0] << 8) & 0x0000ff00) | (rawPort[1] & 0x000000ff);
+                    ;
                     peers.put(ip, port);
                 }
             }

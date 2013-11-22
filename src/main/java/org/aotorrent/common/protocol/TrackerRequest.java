@@ -9,8 +9,8 @@ package org.aotorrent.common.protocol;
 import org.apache.commons.codec.net.URLCodec;
 
 import java.net.MalformedURLException;
+import java.net.URISyntaxException;
 import java.net.URL;
-import java.util.Arrays;
 
 /**
  * info_hash: urlencoded 20-byte SHA1 hash of the value of the info key from the Metainfo file. Note that the value will be a bencoded dictionary, given the definition of the info key above.
@@ -58,14 +58,14 @@ public class TrackerRequest {
         this.trackerId = trackerId;
     }
 
-    public URL createRequest() throws MalformedURLException {
+    public URL createRequest() throws MalformedURLException, URISyntaxException {
         String filePart = url.getFile();
-        Character firstSeparator = (filePart.contains("?")) ? '?' : '&';
+        Character firstSeparator = (filePart.contains("?")) ? '&' : '?';
 
         StringBuilder requestString = new StringBuilder(url.toString())
                 .append(firstSeparator)
-                .append("info_hash=").append(Arrays.toString(URLCodec.encodeUrl(null, infoHash))).append("&")
-                .append("peer_id=").append(Arrays.toString(URLCodec.encodeUrl(null, peerId))).append("&")
+                .append("info_hash=").append(new String(URLCodec.encodeUrl(null, infoHash))).append("&")
+                .append("peer_id=").append(new String(URLCodec.encodeUrl(null, peerId))).append("&")
                 .append("port=").append(port).append("&")
                 .append("uploaded=").append(uploaded).append("&")
                 .append("downloaded=").append(downloaded).append("&")
