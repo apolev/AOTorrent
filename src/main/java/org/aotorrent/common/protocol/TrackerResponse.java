@@ -53,7 +53,7 @@ public class TrackerResponse {
             incomplete = (responseMap.containsKey("incomplete")) ? (int) responseMap.get("incomplete").getLong() : 0;
 
             if (responseMap.get("peers").getValueClass().equals("String")) {
-                byte[] encodedPeers = responseMap.get("peers").getString().getBytes();
+                byte[] encodedPeers = responseMap.get("peers").getString().getBytes("ISO-8859-1");
 
                 if ((encodedPeers.length % 6) > 0) {
                     throw new IllegalStateException("peers has strange length");  //TODO make good exception
@@ -65,7 +65,6 @@ public class TrackerResponse {
 
                     byte[] rawPort = Arrays.copyOfRange(encodedPeers, i * 6 + 4, i * 6 + 6);
                     int port = ((rawPort[0] << 8) & 0x0000ff00) | (rawPort[1] & 0x000000ff);
-                    ;
                     peers.put(ip, port);
                 }
             }

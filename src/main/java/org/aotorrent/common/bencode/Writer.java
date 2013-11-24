@@ -44,9 +44,9 @@ public class Writer {
 
     private void writeString(String string) throws IOException {
         String length = Integer.toString(string.length());
-        os.write(length.getBytes("UTF-8"));
+        os.write(length.getBytes("ISO-8859-1"));
         os.write(':');
-        os.write(string.getBytes("UTF-8"));
+        os.write(string.getBytes("ISO-8859-1"));
     }
 
     private void writeNumber(Long number) throws IOException {

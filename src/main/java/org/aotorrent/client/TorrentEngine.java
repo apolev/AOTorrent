@@ -18,7 +18,7 @@ import java.util.concurrent.Executors;
  * Date:    11/8/13
  */
 public class TorrentEngine {
-    private static final int DEFAULT_PORT = 6969;
+    private static final int DEFAULT_PORT = 6967;
 
     private Set<TrackerConnection> trackerConnections = Sets.newLinkedHashSet();
     private Set<PeerConnection> peerConnections = Sets.newHashSet();

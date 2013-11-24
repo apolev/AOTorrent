@@ -67,7 +67,6 @@ public class TrackerConnection implements Runnable {
         HttpURLConnection connection = null;
         try {
             connection = (HttpURLConnection) request.createRequest().openConnection();
-            ;
             connection.connect();
 
             InputStream reply = connection.getInputStream();

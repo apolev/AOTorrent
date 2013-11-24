@@ -1,9 +1,10 @@
 package org.aotorrent.common.bencode;
 
+import com.google.common.collect.Maps;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -72,7 +73,7 @@ public class Parser {
 
         for (int i = 0; i < length; i++) {
             Integer oneByte = is.read();
-            stringBuilder.append((char) oneByte.byteValue());
+            stringBuilder.append(Character.toChars(oneByte)[0]);
         }
 
         return new Value(stringBuilder.toString());
@@ -142,7 +143,7 @@ public class Parser {
             throw new InvalidBEncodingException("Invalid byte sequence: " + (char) iLetter);
         }
 
-        Map<String, Value> result = new HashMap<String, Value>();
+        Map<String, Value> result = Maps.newLinkedHashMap();
 
         Value key;
         while ((key = decodeString()) != null) {

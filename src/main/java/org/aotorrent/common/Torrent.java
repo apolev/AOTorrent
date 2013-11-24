@@ -47,8 +47,8 @@ public class Torrent {
 
     private class TorrentFile {
 
-
         private final String path;
+
 
         private final long length;
 
@@ -80,7 +80,7 @@ public class Torrent {
 
     }
 
-    public static Torrent create(String announce, String fileName) throws IOException {
+    public static Torrent create(String announce, String fileName) throws IOException, InvalidBEncodingException {
         List<String> announcesIn = Lists.newArrayList(announce);
         List<List<String>> announcesOut = Lists.newArrayList();
         announcesOut.add(announcesIn);
@@ -91,7 +91,7 @@ public class Torrent {
         return new Torrent(announcesOut, file.getParentFile(), fileNames, null, null);
     }
 
-    public Torrent(@NotNull final List<List<String>> announce, File root, @NotNull List<File> files, @Nullable String comment, @Nullable String createdBy) throws IOException {
+    public Torrent(@NotNull final List<List<String>> announce, File root, @NotNull List<File> files, @Nullable String comment, @Nullable String createdBy) throws IOException, InvalidBEncodingException {
 
         this.announce = announce;
         this.root = root;
@@ -108,7 +108,7 @@ public class Torrent {
 
         this.comment = (comment != null) ? comment : DEFAULT_COMMENT;
         this.createdBy = (createdBy != null) ? createdBy : DEFAULT_CREATED_BY;
-        this.infoHash = getInfoHash();
+        this.infoHash = craftInfoHash();
 
     }
 
@@ -135,7 +135,7 @@ public class Torrent {
             files.add(tf);
         }
 
-        infoHash = new byte[]{100, 100};  //TODO proper infohash getting
+        infoHash = getHash(info);
     }
 
     public void save(OutputStream outputStream) throws IOException, InvalidBEncodingException {
@@ -185,22 +185,10 @@ public class Torrent {
         return info;
     }
 
-    public byte[] getInfoHash() {
+    public byte[] craftInfoHash() throws IOException, InvalidBEncodingException {
         Map<String, Value> info = generateInfo();
 
-        ByteArrayOutputStream os = new ByteArrayOutputStream();
-
-        try {
-            Writer.writeOut(os, info);
-            byte[] digest = DigestUtils.sha1(os.toByteArray());
-            return digest;
-        } catch (IOException e) {
-            e.printStackTrace();
-        } catch (InvalidBEncodingException e) {
-            e.printStackTrace();
-        }
-
-        return null;
+        return getHash(info);
     }
 
     public Set<URL> getTrackers() {
@@ -219,6 +207,21 @@ public class Torrent {
         }
 
         return trackerUrls;
+    }
+
+    private byte[] getHash(Map<String, Value> info) throws IOException, InvalidBEncodingException {
+
+        ByteArrayOutputStream os = new ByteArrayOutputStream();
+
+        Writer.writeOut(os, info);
+
+        byte[] digest = DigestUtils.sha1(os.toByteArray());
+
+        return digest;
+    }
+
+    public byte[] getInfoHash() {
+        return infoHash;
     }
 
 
