@@ -1,6 +1,5 @@
 package org.aotorrent.common;
 
-import java.io.File;
 import java.util.Map;
 
 /**
@@ -9,29 +8,27 @@ import java.util.Map;
  * Date:    11/8/13
  */
 public class Piece {
-
-    private final Map<Integer, Piece2File> piece2FileMap;
+    public static int DEFAULT_BLOCK_LENGTH = 16384;
+    //TODO make piece without data and file-knowing, separate iece and data storage
+    private final Map<Long, Piece2File> piece2FileMap;
     private byte[] data;
+    private boolean[] finished;
 
-    public Piece(int length) {
-        piece2FileMap = null;
+    public Piece(Map<Long, Piece2File> piece2FileMap) {
+        this.piece2FileMap = piece2FileMap;
+        data = new byte[Torrent.DEFAULT_PIECE_LENGTH];
+    }
+
+    public Piece(int length, Map<Long, Piece2File> piece2FileMap) {
+        this.piece2FileMap = piece2FileMap;
         data = new byte[length]; //TODO
     }
 
     public void write(byte[] data, int offset) {
-        System.arraycopy(data, 0, this.data, offset, data.length);//TODO
-    }
-
-    private class Piece2File {
-
-        long fileShift;
-        long length;
-        File file;
-
-        private Piece2File(long fileShift, long length, File file) {
-            this.fileShift = fileShift;
-            this.length = length;
-            this.file = file;
+        if (data.length % DEFAULT_BLOCK_LENGTH > 0) {
+            return;
         }
+        System.arraycopy(data, 0, this.data, offset * DEFAULT_BLOCK_LENGTH, data.length);//TODO
     }
+
 }

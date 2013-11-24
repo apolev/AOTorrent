@@ -30,7 +30,7 @@ public class Torrent {
     private static final String DEFAULT_COMMENT = "no comments";
     private static final String DEFAULT_CREATED_BY = "AOTorrent";
     public static final String DEFAULT_TORRENT_ENCODING = "ISO-8859-1";
-    private static final int DEFAULT_PIECE_LENGTH = 512 * 1024;
+    public static final int DEFAULT_PIECE_LENGTH = 512 * 1024;
 
     private final List<List<String>> announce;
 
@@ -49,10 +49,11 @@ public class Torrent {
 
         private final String path;
 
-
         private final long length;
 
         private final String md5sum;
+
+        private long allocated = 0;
 
         TorrentFile(File file) throws IOException {
             length = file.length();
@@ -76,6 +77,14 @@ public class Torrent {
 
         public String getPath() {
             return path;
+        }
+
+        private long getAllocated() {
+            return allocated;
+        }
+
+        private void setAllocated(long allocated) {
+            this.allocated = allocated;
         }
 
     }
@@ -215,9 +224,49 @@ public class Torrent {
 
         Writer.writeOut(os, info);
 
-        byte[] digest = DigestUtils.sha1(os.toByteArray());
+        return DigestUtils.sha1(os.toByteArray());
+    }
 
-        return digest;
+    public Piece createPiece(List<TorrentFile> files) {
+
+        Map<Long, Piece2File> piece2FileMap = Maps.newTreeMap();
+
+        long pieceBytesUsed = 0;
+
+        while (pieceLength - pieceBytesUsed != 0) {
+            TorrentFile file = files.get(0);
+
+            long pieceBytesRemain = pieceLength - pieceBytesUsed;
+            long fileBytesRemain = file.getLength() - file.getAllocated();
+
+            if (fileBytesRemain <= pieceBytesRemain) {
+                Piece2File p2f = new Piece2File(file.getAllocated(), fileBytesRemain, new File(file.getPath()));
+                piece2FileMap.put(pieceBytesUsed, p2f);
+                pieceBytesUsed = pieceBytesUsed + fileBytesRemain;
+                files.remove(0);
+
+            } else if (fileBytesRemain > pieceBytesRemain) {
+                Piece2File p2f = new Piece2File(file.getAllocated(), pieceBytesRemain, new File(file.getPath()));
+                file.setAllocated(file.getAllocated() + pieceBytesRemain);
+                piece2FileMap.put(pieceBytesUsed, p2f);
+                pieceBytesUsed = pieceLength;
+            }
+
+        }
+
+        return new Piece(piece2FileMap);
+    }
+
+    public List<Piece> createPieces() {
+        List<Piece> pieceList = Lists.newArrayList();
+        List<TorrentFile> filesToProcess = Lists.newArrayList(files);
+
+        while (!filesToProcess.isEmpty()) {
+            Piece piece = createPiece(filesToProcess);
+            pieceList.add(piece);
+            System.out.println("pieceList.size() = " + pieceList.size());
+        }
+        return pieceList;
     }
 
     public byte[] getInfoHash() {

@@ -81,7 +81,7 @@ public class TrackerConnection implements Runnable {
                     seeders = response.getComplete();
                     leechers = response.getIncomplete();
                     nextRequest = new Date(System.currentTimeMillis() + (response.getInterval() * 1000));
-
+                    //TODO Semaphore to TrackerEngine that i might have a new peers
                 }
             }
         } catch (IOException e) {
