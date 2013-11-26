@@ -10,6 +10,7 @@ import org.aotorrent.common.bencode.Parser;
 import org.aotorrent.common.bencode.Value;
 import org.aotorrent.common.bencode.Writer;
 import org.aotorrent.common.hash.Hasher;
+import org.aotorrent.common.storage.FileStorage;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
@@ -39,55 +40,13 @@ public class Torrent {
     private final String createdBy;
     private final String encoding = DEFAULT_TORRENT_ENCODING;
     private final int pieceLength = DEFAULT_PIECE_LENGTH;
-    private final String pieces;
+    private final String pieces;  //TODO should be array of bytes
     private final boolean singleFile = false;
     private final File root;
     private final List<TorrentFile> files;
     private final byte[] infoHash;
-
-    private class TorrentFile {
-
-        private final String path;
-
-        private final long length;
-
-        private final String md5sum;
-
-        private long allocated = 0;
-
-        TorrentFile(File file) throws IOException {
-            length = file.length();
-            md5sum = new String(DigestUtils.md5(new FileInputStream(file)), DEFAULT_TORRENT_ENCODING);
-            path = file.getPath();
-        }
-
-        private TorrentFile(String path, long length, String md5sum) {
-            this.path = path;
-            this.length = length;
-            this.md5sum = md5sum;
-        }
-
-        public long getLength() {
-            return length;
-        }
-
-        public String getMd5sum() {
-            return md5sum;
-        }
-
-        public String getPath() {
-            return path;
-        }
-
-        private long getAllocated() {
-            return allocated;
-        }
-
-        private void setAllocated(long allocated) {
-            this.allocated = allocated;
-        }
-
-    }
+    private final long size;
+    private final FileStorage fileStorage;
 
     public static Torrent create(String announce, String fileName) throws IOException, InvalidBEncodingException {
         List<String> announcesIn = Lists.newArrayList(announce);
@@ -101,16 +60,19 @@ public class Torrent {
     }
 
     public Torrent(@NotNull final List<List<String>> announce, File root, @NotNull List<File> files, @Nullable String comment, @Nullable String createdBy) throws IOException, InvalidBEncodingException {
-
         this.announce = announce;
         this.root = root;
         List<TorrentFile> torrentFiles = Lists.newArrayList();
+        long allFilesSize = 0;
+
 
         for (File fileName : files) {
             TorrentFile torrentFile = new TorrentFile(fileName);
             torrentFiles.add(torrentFile);
+            allFilesSize = allFilesSize + torrentFile.getLength();
         }
 
+        this.size = allFilesSize;
         this.pieces = Hasher.getPieces(files, pieceLength);
 
         this.files = torrentFiles;
@@ -118,7 +80,7 @@ public class Torrent {
         this.comment = (comment != null) ? comment : DEFAULT_COMMENT;
         this.createdBy = (createdBy != null) ? createdBy : DEFAULT_CREATED_BY;
         this.infoHash = craftInfoHash();
-
+        this.fileStorage = new FileStorage(torrentFiles, pieceLength, new File("."));
     }
 
     public Torrent(@NotNull final InputStream is) throws IOException, InvalidBEncodingException {
@@ -132,6 +94,7 @@ public class Torrent {
         pieces = info.get("pieces").getString();
 
         files = Lists.newArrayList();
+        long allFilesSize = 0;
 
         for (Value file : info.get("files").getList()) {
             Map<String, Value> valueMap = file.getMap();
@@ -142,9 +105,15 @@ public class Torrent {
                     "");
 
             files.add(tf);
+
+            allFilesSize = allFilesSize + tf.getLength();
         }
 
+        this.size = allFilesSize;
+
         infoHash = getHash(info);
+
+        this.fileStorage = new FileStorage(files, pieceLength, new File("."));
     }
 
     public void save(OutputStream outputStream) throws IOException, InvalidBEncodingException {
@@ -227,7 +196,7 @@ public class Torrent {
         return DigestUtils.sha1(os.toByteArray());
     }
 
-    public Piece createPiece(List<TorrentFile> files) {
+    /*public Piece createPiece(List<TorrentFile> files) {
 
         Map<Long, Piece2File> piece2FileMap = Maps.newTreeMap();
 
@@ -255,16 +224,16 @@ public class Torrent {
         }
 
         return new Piece(piece2FileMap);
-    }
+    }*/
 
-    public List<Piece> createPieces() {
+    public List<Piece> createPieces() throws UnsupportedEncodingException {
         List<Piece> pieceList = Lists.newArrayList();
-        List<TorrentFile> filesToProcess = Lists.newArrayList(files);
 
-        while (!filesToProcess.isEmpty()) {
-            Piece piece = createPiece(filesToProcess);
+        int pieceCount = (int) Math.ceil((double) size / DEFAULT_PIECE_LENGTH);
+        for (int i = 0; i < pieceCount; i++) {
+            byte[] hash = Arrays.copyOfRange(pieces.getBytes(DEFAULT_TORRENT_ENCODING), i * DEFAULT_PIECE_LENGTH, (i + 1) * DEFAULT_PIECE_LENGTH - 1);
+            Piece piece = new Piece(i, DEFAULT_PIECE_LENGTH, hash, fileStorage);
             pieceList.add(piece);
-            System.out.println("pieceList.size() = " + pieceList.size());
         }
         return pieceList;
     }

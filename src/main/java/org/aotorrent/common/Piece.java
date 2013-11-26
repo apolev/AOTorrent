@@ -3,6 +3,7 @@ package org.aotorrent.common;
 import org.aotorrent.common.storage.FileStorage;
 import org.apache.commons.codec.digest.DigestUtils;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 
@@ -66,8 +67,12 @@ public class Piece {
             byte[] pieceHash = DigestUtils.sha1(buffer.array());
 
             if (Arrays.equals(pieceHash, hash)) {
-                complete = true;
-                storage.store(index, buffer);
+                try {
+                    storage.store(index, buffer);
+                    complete = true;
+                } catch (IOException e) {
+                    e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+                }
             } else {
                 buffer.clear();
                 Arrays.fill(blockComplete, Boolean.FALSE);
