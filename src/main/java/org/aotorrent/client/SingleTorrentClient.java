@@ -12,7 +12,7 @@ import java.io.*;
  */
 public class SingleTorrentClient {
     public static void main(String[] args) {
-        String filename = "torrent2.torrent"; //args[1];
+        String filename = "torrent.torrent"; //args[1];
         try {
             InputStream is = new BufferedInputStream(new FileInputStream(filename));
             Torrent torrent = new Torrent(is);

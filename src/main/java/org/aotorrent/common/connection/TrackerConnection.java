@@ -33,7 +33,7 @@ public class TrackerConnection implements Runnable {
     private final boolean noPeerId = true;
     private String event = "started";
     private final InetAddress ip;
-    private final int numwant = 50;
+    private final int numWant = 50;
     private String trackerId = null;
     private Date nextRequest = null;
     private boolean shutdown = false;
@@ -63,7 +63,7 @@ public class TrackerConnection implements Runnable {
     }
 
     private void getPeers() {
-        TrackerRequest request = new TrackerRequest(url, infoHash, peerId, port, uploaded, downloaded, left, compact, noPeerId, numwant, trackerId);
+        TrackerRequest request = new TrackerRequest(url, infoHash, peerId, port, uploaded, downloaded, left, compact, noPeerId, numWant, trackerId);
         HttpURLConnection connection = null;
         try {
             connection = (HttpURLConnection) request.createRequest().openConnection();
