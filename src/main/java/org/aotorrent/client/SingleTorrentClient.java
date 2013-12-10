@@ -16,7 +16,7 @@ public class SingleTorrentClient {
         try {
             InputStream is = new BufferedInputStream(new FileInputStream(filename));
             Torrent torrent = new Torrent(is);
-            TorrentEngine torrentEngine = TorrentEngine.createTorrentEngine(torrent);
+            TorrentEngine torrentEngine = new TorrentEngine(torrent);
 
         } catch (FileNotFoundException e) {
             e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.

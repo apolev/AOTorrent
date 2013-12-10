@@ -1,6 +1,6 @@
 package org.aotorrent.common.protocol;
 
-import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 import org.aotorrent.common.bencode.InvalidBEncodingException;
 import org.aotorrent.common.bencode.Parser;
 import org.aotorrent.common.bencode.Value;
@@ -8,8 +8,10 @@ import org.aotorrent.common.bencode.Value;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.util.Arrays;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Project: AOTorrent
@@ -34,7 +36,7 @@ public class TrackerResponse {
     //    incomplete: number of non-seeder peers, aka "leechers" (integer)
     private final int incomplete;
     //    peers: (dictionary model) The value is a list of dictionaries, each with the following keys:
-    private final Map<InetAddress, Integer> peers = Maps.newHashMap();
+    private final Set<InetSocketAddress> peers = Sets.newHashSet();
     //    peer id: peer's self-selected ID, as described above for the tracker request (string)
     //    ip: peer's IP address either IPv6 (hexed) or IPv4 (dotted quad) or DNS name (string)
     //    port: peer's port number (integer)
@@ -65,7 +67,7 @@ public class TrackerResponse {
 
                     byte[] rawPort = Arrays.copyOfRange(encodedPeers, i * 6 + 4, i * 6 + 6);
                     int port = ((rawPort[0] << 8) & 0x0000ff00) | (rawPort[1] & 0x000000ff);
-                    peers.put(ip, port);
+                    peers.add(new InetSocketAddress(ip, port));
                 }
             }
         } else {
@@ -108,7 +110,7 @@ public class TrackerResponse {
         return incomplete;
     }
 
-    public Map<InetAddress, Integer> getPeers() {
+    public Set<InetSocketAddress> getPeers() {
         return peers;
     }
 

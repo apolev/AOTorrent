@@ -196,51 +196,20 @@ public class Torrent {
         return DigestUtils.sha1(os.toByteArray());
     }
 
-    /*public Piece createPiece(List<TorrentFile> files) {
-
-        Map<Long, Piece2File> piece2FileMap = Maps.newTreeMap();
-
-        long pieceBytesUsed = 0;
-
-        while (pieceLength - pieceBytesUsed != 0) {
-            TorrentFile file = files.get(0);
-
-            long pieceBytesRemain = pieceLength - pieceBytesUsed;
-            long fileBytesRemain = file.getLength() - file.getAllocated();
-
-            if (fileBytesRemain <= pieceBytesRemain) {
-                Piece2File p2f = new Piece2File(file.getAllocated(), fileBytesRemain, new File(file.getPath()));
-                piece2FileMap.put(pieceBytesUsed, p2f);
-                pieceBytesUsed = pieceBytesUsed + fileBytesRemain;
-                files.remove(0);
-
-            } else if (fileBytesRemain > pieceBytesRemain) {
-                Piece2File p2f = new Piece2File(file.getAllocated(), pieceBytesRemain, new File(file.getPath()));
-                file.setAllocated(file.getAllocated() + pieceBytesRemain);
-                piece2FileMap.put(pieceBytesUsed, p2f);
-                pieceBytesUsed = pieceLength;
-            }
-
-        }
-
-        return new Piece(piece2FileMap);
-    }*/
-
-    public List<Piece> createPieces() throws UnsupportedEncodingException {
-        List<Piece> pieceList = Lists.newArrayList();
-
-        int pieceCount = (int) Math.ceil((double) size / DEFAULT_PIECE_LENGTH);
-        for (int i = 0; i < pieceCount; i++) {
-            byte[] hash = Arrays.copyOfRange(pieces.getBytes(DEFAULT_TORRENT_ENCODING), i * DEFAULT_PIECE_LENGTH, (i + 1) * DEFAULT_PIECE_LENGTH - 1);
-            Piece piece = new Piece(i, DEFAULT_PIECE_LENGTH, hash, fileStorage);
-            pieceList.add(piece);
-        }
-        return pieceList;
-    }
-
     public byte[] getInfoHash() {
         return infoHash;
     }
 
 
+    public long getSize() {
+        return size;
+    }
+
+    public String getPieces() {
+        return pieces;
+    }
+
+    public FileStorage getFileStorage() {
+        return fileStorage;
+    }
 }

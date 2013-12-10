@@ -6,5 +6,9 @@ package org.aotorrent.common.protocol;
  * Date:    11/8/13
  */
 public class PeerRequest {
+
+    public PeerRequest(byte[] buffer) {
+
+    }
     //TODO
 }

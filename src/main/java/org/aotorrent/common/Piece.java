@@ -12,7 +12,7 @@ import java.util.Arrays;
  * User:    dmitry
  * Date:    11/8/13
  */
-public class Piece {
+public class Piece implements Comparable<Piece> {
 
     public static int DEFAULT_BLOCK_LENGTH = 16384;
 
@@ -95,5 +95,18 @@ public class Piece {
 
     public boolean isComplete() {
         return complete;
+    }
+
+    @Override
+    public int compareTo(Piece otherPiece) {
+        if (isComplete() == otherPiece.isComplete()) {
+            return peerCount - otherPiece.peerCount;
+        } else {
+            if (isComplete()) {
+                return 1;
+            } else {
+                return -1;
+            }
+        }
     }
 }

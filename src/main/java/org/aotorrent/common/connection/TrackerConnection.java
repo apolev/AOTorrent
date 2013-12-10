@@ -1,5 +1,6 @@
 package org.aotorrent.common.connection;
 
+import org.aotorrent.client.TorrentEngine;
 import org.aotorrent.common.bencode.InvalidBEncodingException;
 import org.aotorrent.common.protocol.TrackerRequest;
 import org.aotorrent.common.protocol.TrackerResponse;
@@ -7,12 +8,9 @@ import org.aotorrent.common.protocol.TrackerResponse;
 import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.HttpURLConnection;
-import java.net.InetAddress;
-import java.net.URISyntaxException;
-import java.net.URL;
+import java.net.*;
 import java.util.Date;
-import java.util.Map;
+import java.util.Set;
 
 /**
  * Project: AOTorrent
@@ -20,6 +18,7 @@ import java.util.Map;
  * Date:    11/8/13
  */
 public class TrackerConnection implements Runnable {
+    private final TorrentEngine torrentEngine;
     private URL url;
     private final byte[] infoHash;
     private final byte[] peerId;
@@ -38,9 +37,10 @@ public class TrackerConnection implements Runnable {
     private Date nextRequest = null;
     private boolean shutdown = false;
 
-    private Map<InetAddress, Integer> peers;
+    private Set<InetSocketAddress> peers;
 
-    public TrackerConnection(URL url, byte[] infoHash, byte[] peerId, InetAddress ip, int port) {
+    public TrackerConnection(TorrentEngine torrentEngine, URL url, byte[] infoHash, byte[] peerId, InetAddress ip, int port) {
+        this.torrentEngine = torrentEngine;
         this.url = url;
         this.infoHash = infoHash;
         this.peerId = peerId;
@@ -72,18 +72,18 @@ public class TrackerConnection implements Runnable {
             InputStream reply = connection.getInputStream();
             BufferedInputStream bis = new BufferedInputStream(reply);
             TrackerResponse response = new TrackerResponse(bis);
-            synchronized (this) {
-                if (response.isFailed()) {
-                    nextRequest = new Date(System.currentTimeMillis() + (300 * 1000));
-                } else {
-                    peers = response.getPeers();
-                    trackerId = response.getTrackerId();
-                    seeders = response.getComplete();
-                    leechers = response.getIncomplete();
-                    nextRequest = new Date(System.currentTimeMillis() + (response.getInterval() * 1000));
-                    //TODO Semaphore to TrackerEngine that i might have a new peers
-                }
+
+            if (response.isFailed()) {
+                nextRequest = new Date(System.currentTimeMillis() + (300 * 1000));
+            } else {
+                peers = response.getPeers();
+                trackerId = response.getTrackerId();
+                seeders = response.getComplete();
+                leechers = response.getIncomplete();
+                nextRequest = new Date(System.currentTimeMillis() + (response.getInterval() * 1000));
+                torrentEngine.mergePeers(peers);
             }
+
         } catch (IOException e) {
             synchronized (this) {
                 nextRequest = new Date(System.currentTimeMillis() + (300 * 1000));
