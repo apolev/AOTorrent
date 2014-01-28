@@ -20,6 +20,7 @@ import java.io.*;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.*;
+import java.util.concurrent.ExecutionException;
 
 /**
  * User: dnapolov
@@ -27,7 +28,7 @@ import java.util.*;
  * Time: 2:26 PM
  */
 public class Torrent {
-    private static final Logger logger = LoggerFactory.getLogger(Torrent.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(Torrent.class);
     private static final String DEFAULT_COMMENT = "no comments";
     private static final String DEFAULT_CREATED_BY = "AOTorrent";
     public static final String DEFAULT_TORRENT_ENCODING = "ISO-8859-1";
@@ -48,7 +49,7 @@ public class Torrent {
     private final long size;
     private final FileStorage fileStorage;
 
-    public static Torrent create(String announce, String fileName) throws IOException, InvalidBEncodingException {
+    public static Torrent create(String announce, String fileName) throws IOException, InvalidBEncodingException, ExecutionException, InterruptedException {
         List<String> announcesIn = Lists.newArrayList(announce);
         List<List<String>> announcesOut = Lists.newArrayList();
         announcesOut.add(announcesIn);
@@ -59,7 +60,7 @@ public class Torrent {
         return new Torrent(announcesOut, file.getParentFile(), fileNames, null, null);
     }
 
-    public Torrent(@NotNull final List<List<String>> announce, File root, @NotNull List<File> files, @Nullable String comment, @Nullable String createdBy) throws IOException, InvalidBEncodingException {
+    public Torrent(@NotNull final List<List<String>> announce, File root, @NotNull List<File> files, @Nullable String comment, @Nullable String createdBy) throws IOException, InvalidBEncodingException, ExecutionException, InterruptedException {
         this.announce = announce;
         this.root = root;
         List<TorrentFile> torrentFiles = Lists.newArrayList();
@@ -69,11 +70,11 @@ public class Torrent {
         for (File fileName : files) {
             TorrentFile torrentFile = new TorrentFile(fileName);
             torrentFiles.add(torrentFile);
-            allFilesSize = allFilesSize + torrentFile.getLength();
+            allFilesSize += torrentFile.getLength();
         }
 
         this.size = allFilesSize;
-        this.pieces = Hasher.getPieces(files, pieceLength);
+        this.pieces = Hasher.getPieces(files, 0, pieceLength);
 
         this.files = torrentFiles;
 
