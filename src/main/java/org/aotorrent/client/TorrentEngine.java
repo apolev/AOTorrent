@@ -13,10 +13,7 @@ import java.io.UnsupportedEncodingException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.URL;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -38,14 +35,12 @@ public class TorrentEngine implements Runnable {
 
     public TorrentEngine(Torrent torrent) throws UnsupportedEncodingException {
         this.torrent = torrent;
-
         this.pieces = createPieces();
-
     }
 
     private void initTrackers(InetAddress ip, int port) {
 
-        Set<URL> trackers = torrent.getTrackers();
+        List<URL> trackers = torrent.getTrackers();
 
         trackerConnectionThreads = Executors.newFixedThreadPool(trackers.size());
 
@@ -56,7 +51,7 @@ public class TorrentEngine implements Runnable {
         }
     }
 
-    public void mergePeers(Set<InetSocketAddress> peers) {
+    public void mergePeers(Collection<InetSocketAddress> peers) {
         synchronized (this) {
             peers.removeAll(peerConnections.keySet());
 
@@ -77,10 +72,10 @@ public class TorrentEngine implements Runnable {
     public List<Piece> createPieces() throws UnsupportedEncodingException {
         List<Piece> pieceList = Lists.newArrayList();
 
-        int pieceCount = (int) Math.ceil((double) torrent.getSize() / torrent.DEFAULT_PIECE_LENGTH);
+        int pieceCount = (int) Math.ceil((double) torrent.getSize() / Torrent.DEFAULT_PIECE_LENGTH);
         for (int i = 0; i < pieceCount; i++) {
-            byte[] hash = Arrays.copyOfRange(torrent.getPieces().getBytes(torrent.DEFAULT_TORRENT_ENCODING), i * torrent.DEFAULT_PIECE_LENGTH, (i + 1) * torrent.DEFAULT_PIECE_LENGTH - 1);
-            Piece piece = new Piece(i, torrent.DEFAULT_PIECE_LENGTH, hash, torrent.getFileStorage());
+            byte[] hash = Arrays.copyOfRange(torrent.getPieces().getBytes(Torrent.DEFAULT_TORRENT_ENCODING), i * Torrent.DEFAULT_PIECE_LENGTH, (i + 1) * Torrent.DEFAULT_PIECE_LENGTH - 1);
+            Piece piece = new Piece(i, Torrent.DEFAULT_PIECE_LENGTH, hash, torrent.getFileStorage());
             pieceList.add(piece);
         }
         return pieceList;

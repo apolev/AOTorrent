@@ -5,10 +5,7 @@ import org.aotorrent.common.Torrent;
 
 import java.io.*;
 import java.util.List;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
+import java.util.concurrent.*;
 
 /**
  * User: dnapolov
@@ -112,6 +109,8 @@ public class Hasher {
     public static String getPieces(Iterable<File> files, long offset, int pieceLength) throws IOException, ExecutionException, InterruptedException, FileNotFoundException, UnsupportedEncodingException {
 
         ExecutorService executor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+        Semaphore semaphore = new Semaphore(Runtime.getRuntime().availableProcessors());
+
         List<Future<byte[]>> piecesList = Lists.newArrayList();
 
         int bytesRemain = pieceLength;
@@ -139,8 +138,8 @@ public class Hasher {
                             if (bIS.read(buffer) != pieceLength) {
                                 throw new IOException("Some strange error. Read less than expected.");
                             }
-
-                            HasherThread ht = new HasherThread(buffer);
+                            semaphore.acquire();
+                            HasherThread ht = new HasherThread(buffer, semaphore);
                             piecesList.add(executor.submit(ht));
                         }
 
@@ -158,7 +157,8 @@ public class Hasher {
                             }
                             System.arraycopy(addition, 0, buffer, pieceLength - bytesRemain, addition.length);
 
-                            HasherThread ht = new HasherThread(buffer);
+                            semaphore.acquire();
+                            HasherThread ht = new HasherThread(buffer, semaphore);
                             piecesList.add(executor.submit(ht));
 
                             bytesRemain = pieceLength;

@@ -2,7 +2,6 @@ package org.aotorrent.common;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
 import com.sun.istack.internal.NotNull;
 import com.sun.istack.internal.Nullable;
 import org.aotorrent.common.bencode.InvalidBEncodingException;
@@ -19,7 +18,10 @@ import org.slf4j.LoggerFactory;
 import java.io.*;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.util.*;
+import java.util.Arrays;
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutionException;
 
 /**
@@ -49,7 +51,7 @@ public class Torrent {
     private final long size;
     private final FileStorage fileStorage;
 
-    public static Torrent create(String announce, String fileName) throws IOException, InvalidBEncodingException, ExecutionException, InterruptedException {
+    public static Torrent create(String announce, String fileName) throws IOException, InvalidBEncodingException, ExecutionException, InterruptedException, FileNotFoundException, UnsupportedEncodingException {
         List<String> announcesIn = Lists.newArrayList(announce);
         List<List<String>> announcesOut = Lists.newArrayList();
         announcesOut.add(announcesIn);
@@ -60,7 +62,7 @@ public class Torrent {
         return new Torrent(announcesOut, file.getParentFile(), fileNames, null, null);
     }
 
-    public Torrent(@NotNull final List<List<String>> announce, File root, @NotNull List<File> files, @Nullable String comment, @Nullable String createdBy) throws IOException, InvalidBEncodingException, ExecutionException, InterruptedException {
+    private Torrent(@NotNull final List<List<String>> announce, File root, @NotNull Iterable<File> files, @Nullable String comment, @Nullable String createdBy) throws IOException, InvalidBEncodingException, ExecutionException, InterruptedException, FileNotFoundException, UnsupportedEncodingException {
         this.announce = announce;
         this.root = root;
         List<TorrentFile> torrentFiles = Lists.newArrayList();
@@ -107,7 +109,7 @@ public class Torrent {
 
             files.add(tf);
 
-            allFilesSize = allFilesSize + tf.getLength();
+            allFilesSize += tf.getLength();
         }
 
         this.size = allFilesSize;
@@ -164,14 +166,14 @@ public class Torrent {
         return info;
     }
 
-    public byte[] craftInfoHash() throws IOException, InvalidBEncodingException {
+    private byte[] craftInfoHash() throws IOException, InvalidBEncodingException {
         Map<String, Value> info = generateInfo();
 
         return getHash(info);
     }
 
-    public Set<URL> getTrackers() {
-        Set<URL> trackerUrls = Sets.newLinkedHashSet();
+    public List<URL> getTrackers() {
+        List<URL> trackerUrls = Lists.newArrayList();
 
         for (List<String> list : announce) {
             for (String trackerUrl : list) {
