@@ -35,6 +35,8 @@ public class Torrent {
     private static final String DEFAULT_CREATED_BY = "AOTorrent";
     public static final String DEFAULT_TORRENT_ENCODING = "ISO-8859-1";
     public static final int DEFAULT_PIECE_LENGTH = 512 * 1024;
+    public static final int INFO_HASH_LENGTH = 20;
+    public static final int PEER_ID_LENGTH = 20;
 
     private final List<List<String>> announce;
 
