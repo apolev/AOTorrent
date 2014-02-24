@@ -16,7 +16,7 @@ public class test {
         FileOutputStream fileOutputStream = null;
         try {
             fileOutputStream = new FileOutputStream("torrent.torrent");
-            Torrent torrent = Torrent.create("http://yo.yo/yo", "1.exe");
+            Torrent torrent = Torrent.create(args[0], args[1]);
             System.out.println("torrent = " + torrent + "\n\n\n\n");
             torrent.save(fileOutputStream);
         } catch (FileNotFoundException e) {
@@ -35,6 +35,7 @@ public class test {
                     fileOutputStream.close();
                 }
             } catch (IOException e) {
+                System.out.println(e);
             }
         }
     }

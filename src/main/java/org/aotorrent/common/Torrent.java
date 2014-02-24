@@ -91,7 +91,7 @@ public class Torrent {
     public Torrent(@NotNull final InputStream is) throws IOException, InvalidBEncodingException {
         Map<String, Value> parsed = Parser.parse(is);
         String announceURL = parsed.get("announce").getString();
-        announce = Arrays.asList((List<String>) Arrays.asList(announceURL));
+        announce = Lists.<List<String>>newArrayList(Lists.newArrayList(announceURL));
         comment = parsed.get("comment").getString();
         createdBy = parsed.get("created by").getString();
         Map<String, Value> info = parsed.get("info").getMap();
@@ -216,5 +216,17 @@ public class Torrent {
 
     public FileStorage getFileStorage() {
         return fileStorage;
+    }
+
+    @Override
+    public String toString() {
+        return "Torrent{" +
+                "announce=" + announce +
+                ", creationDate=" + creationDate +
+                ", comment='" + comment + '\'' +
+                ", createdBy='" + createdBy + '\'' +
+                ", root=" + root +
+                ", files=" + files +
+                '}';
     }
 }

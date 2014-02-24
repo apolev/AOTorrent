@@ -53,4 +53,11 @@ public class TorrentFile {
         this.allocated = allocated;
     }
 
+    @Override
+    public String toString() {
+        return "TorrentFile{" +
+                "path='" + path + '\'' +
+                ", length=" + length +
+                '}';
+    }
 }

@@ -15,6 +15,7 @@ import java.util.Arrays;
 public class Piece implements Comparable<Piece> {
 
     public static int DEFAULT_BLOCK_LENGTH = 16384;
+    public static final int PIECE_HASH_LENGTH = 20;
 
     private final int index;
     private final int pieceLength;

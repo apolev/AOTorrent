@@ -1,6 +1,7 @@
 package org.aotorrent.common.hash;
 
 import com.google.common.collect.Lists;
+import org.aotorrent.common.Piece;
 import org.aotorrent.common.Torrent;
 
 import java.io.*;
@@ -34,77 +35,6 @@ public class Hasher {
 
         System.out.println("overall = " + overall);
     }
-
-/*
-    public static String getPieces(List<File> files, int pieceLength) throws IOException {
-        StringBuilder pieces = new StringBuilder();
-        byte[] buffer = new byte[pieceLength];
-
-        int remainder = 0;
-
-        for (File file : files) {
-            FileInputStream fIS = new FileInputStream(file);
-            BufferedInputStream bIS = new BufferedInputStream(fIS);
-
-            if (remainder > 0) {
-                //int available = bIS.
-                if (bIS.available() >= (pieceLength - remainder)) {
-                    byte[] addition = new byte[pieceLength - remainder];
-
-                    if (bIS.read(addition) != addition.length) {
-                        throw new IOException("Some strange error. Read less than expected.");
-                    }
-
-                    System.arraycopy(addition, 0, buffer, remainder, (pieceLength - remainder));
-                } else {
-                    byte[] addition = new byte[bIS.available()];
-
-                    if (bIS.read(addition) != addition.length) {
-                        throw new IOException("Some strange error. Read less than expected.");
-                    }
-
-                    System.arraycopy(addition, 0, buffer, remainder, addition.length);
-                    remainder = remainder + addition.length;
-                    continue;
-                }
-            }
-
-            while (bIS.available() > pieceLength) {
-                if (bIS.read(buffer) != pieceLength) {
-                    throw new IOException("Some strange error. Read less than expected.");
-                }
-
-                byte[] hash = DigestUtils.sha1(buffer);
-                pieces.append(new String(hash, Torrent.DEFAULT_TORRENT_ENCODING));
-            }
-
-
-            //TODO check if it is the last chunk
-            if (bIS.available() > 0) {
-                if (files.indexOf(file) == (files.size() - 1)) {
-                    byte[] lastChunk = new byte[bIS.available()];
-
-                    if (bIS.read(lastChunk) != lastChunk.length) {
-                        throw new IOException("Some strange error. Read less than expected.");
-                    }
-
-                    byte[] hash = DigestUtils.sha1(lastChunk);
-                    pieces.append(new String(hash, Torrent.DEFAULT_TORRENT_ENCODING));
-
-                } else {
-                    remainder = bIS.available();
-                    if (bIS.read(buffer, 0, remainder) != remainder) {
-                        throw new IOException("Some strange error. Read less than expected.");
-                    }
-                }
-
-            }
-
-        }
-
-        return pieces.toString();
-    }
-*/
 
     public static String getPieces(Iterable<File> files, long offset, int pieceLength) throws IOException, ExecutionException, InterruptedException, FileNotFoundException, UnsupportedEncodingException {
 
@@ -175,7 +105,7 @@ public class Hasher {
                 counter++;
             }
 
-            StringBuilder sb = new StringBuilder(piecesList.size() * pieceLength);
+            StringBuilder sb = new StringBuilder(piecesList.size() * Piece.PIECE_HASH_LENGTH);
 
             for (Future<byte[]> piece : piecesList) {
                 sb.append(new String(piece.get(), Torrent.DEFAULT_TORRENT_ENCODING));
