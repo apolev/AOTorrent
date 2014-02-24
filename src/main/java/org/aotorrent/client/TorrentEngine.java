@@ -8,7 +8,6 @@ import org.aotorrent.common.Torrent;
 import org.aotorrent.common.connection.PeerConnection;
 import org.aotorrent.common.connection.TrackerConnection;
 
-import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -57,14 +56,10 @@ public class TorrentEngine implements Runnable {
 
             for (InetSocketAddress peer : peers) {
                 PeerConnection peerConnection = null;
-                try {
-                    peerConnection = new PeerConnection(peer, this);
-                    peerConnections.put(peer, peerConnection);
-                    peersThreads.submit(peerConnection);
-                } catch (IOException e) {
-                    e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
-                }
 
+                peerConnection = new PeerConnection(peer, this);
+                peerConnections.put(peer, peerConnection);
+                peersThreads.submit(peerConnection);
             }
         }
     }
@@ -84,5 +79,42 @@ public class TorrentEngine implements Runnable {
     @Override
     public void run() {
         //To change body of implemented methods use File | Settings | File Templates.
+    }
+
+    public Torrent getTorrent() {
+        return torrent;
+    }
+
+    public byte[] getPeerId() {
+        return peerId;
+    }
+
+    public BitSet getBitField() {
+        BitSet bitField = new BitSet(pieces.size());
+
+        int index = 0;
+        for (Piece piece : pieces) {
+            bitField.set(index, piece.isComplete());
+            index++;
+        }
+        return bitField;
+    }
+
+    public int getPieceCount() {
+        return pieces.size();
+    }
+
+    public Piece getNextPiece(BitSet bitField) { //TODO increasePeerCount()
+        Set<Piece> sorted = Sets.newTreeSet(pieces);
+        Iterator<Piece> iterator = sorted.iterator();
+
+        for (int i = 0; i < sorted.size(); i++) {
+            Piece piece = iterator.next();
+            if (bitField.get(i) && !piece.isComplete()) {
+                return piece;
+            }
+
+        }
+        return null;
     }
 }

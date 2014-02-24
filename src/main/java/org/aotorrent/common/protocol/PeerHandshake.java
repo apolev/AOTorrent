@@ -2,6 +2,8 @@ package org.aotorrent.common.protocol;
 
 import org.aotorrent.common.Torrent;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.util.Arrays;
 
@@ -11,9 +13,11 @@ import java.util.Arrays;
  * Time: 5:37 PM
  */
 public class PeerHandshake {
+    public static final String DEFAULT_PROTOCOL_STRING = "BitTorrent protocol";
+    public static final byte[] DEFAULT_RESERVED_BITS = {0, 0, 0, 0, 0, 0, 0, 0};
     private static final int BYTE_MAX = 0xFF;
     private final String protocolString;
-    private final boolean[] reserved;
+    private final byte[] reserved;
     private final byte[] infoHash;
     private final byte[] peerId;
 
@@ -24,8 +28,8 @@ public class PeerHandshake {
         protocolString = new String(handshake, index, protocolStringLength, Torrent.DEFAULT_TORRENT_ENCODING);
         index += protocolStringLength;
 
-        reserved = bits(handshake[index]);
-        index++;
+        reserved = Arrays.copyOfRange(handshake, index, index + 8);
+        index += 8;
 
         infoHash = Arrays.copyOfRange(handshake, index, Torrent.INFO_HASH_LENGTH + index);
         index += Torrent.INFO_HASH_LENGTH;
@@ -34,11 +38,26 @@ public class PeerHandshake {
         index += Torrent.PEER_ID_LENGTH;
     }
 
-    public PeerHandshake(String protocolString, boolean[] reserved, byte[] infoHash, byte[] peerId) {
+    public PeerHandshake(byte[] infoHash, byte[] peerId) {
+        this(DEFAULT_PROTOCOL_STRING, DEFAULT_RESERVED_BITS, infoHash, peerId);
+    }
+
+    public PeerHandshake(String protocolString, byte[] reserved, byte[] infoHash, byte[] peerId) {
         this.protocolString = protocolString;
         this.reserved = reserved;
         this.infoHash = infoHash;
         this.peerId = peerId;
+    }
+
+    public byte[] toTransmit() throws IOException {
+        ByteArrayOutputStream os = new ByteArrayOutputStream();
+        os.write(protocolString.length());
+        os.write(protocolString.getBytes(Torrent.DEFAULT_TORRENT_ENCODING));
+        os.write(reserved);
+        os.write(infoHash);
+        os.write(peerId);
+
+        return os.toByteArray();
     }
 
     public static int getByteMax() {
@@ -57,20 +76,16 @@ public class PeerHandshake {
         return protocolString;
     }
 
-    public boolean[] getReserved() {
+    public byte[] getReserved() {
         return reserved;
     }
 
-    private static boolean[] bits(final byte b) {
-        return new boolean[]{
-                (b & 1) != 0,
-                (b & 2) != 0,
-                (b & 4) != 0,
-                (b & 8) != 0,
-                (b & 0x10) != 0,
-                (b & 0x20) != 0,
-                (b & 0x40) != 0,
-                (b & 0x80) != 0
-        };
+    public boolean isOk(Torrent torrent) {
+
+        if (!Arrays.equals(infoHash, torrent.getInfoHash())) {
+            return false;
+        }
+
+        return true;
     }
 }

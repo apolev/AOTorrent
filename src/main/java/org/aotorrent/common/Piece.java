@@ -110,4 +110,14 @@ public class Piece implements Comparable<Piece> {
             }
         }
     }
+
+    public int getNextEmptyBlockIndex() {
+        for (int i = 0; i < blockComplete.length; i++) {
+            if (!blockComplete[i]) {
+                return i;
+            }
+        }
+
+        return -1;
+    }
 }
