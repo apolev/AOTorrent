@@ -1,4 +1,4 @@
-package org.aotorrent.common.protocol;
+package org.aotorrent.common.protocol.peer;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -9,10 +9,10 @@ import java.util.BitSet;
  * Date: 2/25/14
  * Time: 6:38 PM
  */
-public class PeerBitFieldRequest {
+public class BitFieldRequest {
     private BitSet bitField;
 
-    public PeerBitFieldRequest(BitSet bitField) {
+    public BitFieldRequest(BitSet bitField) {
         this.bitField = bitField;
     }
 

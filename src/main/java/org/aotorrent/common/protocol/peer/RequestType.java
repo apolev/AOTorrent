@@ -1,4 +1,4 @@
-package org.aotorrent.common.protocol;
+package org.aotorrent.common.protocol.peer;
 
 import com.google.common.collect.Maps;
 
