@@ -2,7 +2,8 @@ package org.aotorrent.common.connection;
 
 import org.aotorrent.client.TorrentEngine;
 import org.aotorrent.common.Piece;
-import org.aotorrent.common.protocol.PeerHandshake;
+import org.aotorrent.common.protocol.PeerBitFieldRequest;
+import org.aotorrent.common.protocol.PeerHandshakeRequest;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -55,7 +56,10 @@ public class PeerConnection implements Runnable {
 
             handshake(inputStream, outputStream);
 
-            //TODO bitfield
+            if (bitField.cardinality() > 0) {
+                PeerBitFieldRequest bitFieldRequest = new PeerBitFieldRequest(bitField);
+                outputStream.write(bitFieldRequest.toTransmit());
+            }
 
             //TODO interest
 
@@ -90,7 +94,7 @@ public class PeerConnection implements Runnable {
     }
 
     private void handshake(InputStream inputStream, OutputStream outputStream) throws IOException, PeerProtocolException {
-        final PeerHandshake peerHandshake = new PeerHandshake(torrentEngine.getTorrent().getInfoHash(), torrentEngine.getPeerId());
+        final PeerHandshakeRequest peerHandshake = new PeerHandshakeRequest(torrentEngine.getTorrent().getInfoHash(), torrentEngine.getPeerId());
 
         outputStream.write(peerHandshake.toTransmit());
 
@@ -102,9 +106,9 @@ public class PeerConnection implements Runnable {
 
         inputStream.read(handshakeReply, 1, handshakeReply.length - 1);
 
-        final PeerHandshake peerHandshakeReply = new PeerHandshake(handshakeReply);
+        final PeerHandshakeRequest peerHandshakeReply = new PeerHandshakeRequest(handshakeReply);
 
-        if (!peerHandshake.isOk(torrentEngine.getTorrent())) {
+        if (!peerHandshakeReply.isOk(torrentEngine.getTorrent())) {
             throw new PeerProtocolException("Handshake failed");
         }
     }

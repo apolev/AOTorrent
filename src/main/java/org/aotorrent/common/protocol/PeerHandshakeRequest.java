@@ -12,7 +12,7 @@ import java.util.Arrays;
  * Date: 2/21/14
  * Time: 5:37 PM
  */
-public class PeerHandshake {
+public class PeerHandshakeRequest {
     public static final String DEFAULT_PROTOCOL_STRING = "BitTorrent protocol";
     public static final byte[] DEFAULT_RESERVED_BITS = {0, 0, 0, 0, 0, 0, 0, 0};
     private static final int BYTE_MAX = 0xFF;
@@ -21,7 +21,7 @@ public class PeerHandshake {
     private final byte[] infoHash;
     private final byte[] peerId;
 
-    public PeerHandshake(byte[] handshake) throws UnsupportedEncodingException {
+    public PeerHandshakeRequest(byte[] handshake) throws UnsupportedEncodingException {
         int protocolStringLength = handshake[0] & BYTE_MAX;
         int index = 1;
 
@@ -38,11 +38,11 @@ public class PeerHandshake {
         index += Torrent.PEER_ID_LENGTH;
     }
 
-    public PeerHandshake(byte[] infoHash, byte[] peerId) {
+    public PeerHandshakeRequest(byte[] infoHash, byte[] peerId) {
         this(DEFAULT_PROTOCOL_STRING, DEFAULT_RESERVED_BITS, infoHash, peerId);
     }
 
-    public PeerHandshake(String protocolString, byte[] reserved, byte[] infoHash, byte[] peerId) {
+    public PeerHandshakeRequest(String protocolString, byte[] reserved, byte[] infoHash, byte[] peerId) {
         this.protocolString = protocolString;
         this.reserved = reserved;
         this.infoHash = infoHash;
