@@ -7,6 +7,7 @@ import org.aotorrent.common.Piece;
 import org.aotorrent.common.Torrent;
 import org.aotorrent.common.connection.PeerConnection;
 import org.aotorrent.common.connection.TrackerConnection;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.UnsupportedEncodingException;
 import java.net.InetAddress;
@@ -64,7 +65,7 @@ public class TorrentEngine implements Runnable {
         }
     }
 
-    public List<Piece> createPieces() throws UnsupportedEncodingException {
+    private List<Piece> createPieces() throws UnsupportedEncodingException {
         List<Piece> pieceList = Lists.newArrayList();
 
         int pieceCount = (int) Math.ceil((double) torrent.getSize() / Torrent.DEFAULT_PIECE_LENGTH);
@@ -116,5 +117,11 @@ public class TorrentEngine implements Runnable {
 
         }
         return null;
+    }
+
+    @Nullable
+    public Piece getPiece(int index) {
+        return pieces.get(index);
+
     }
 }

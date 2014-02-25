@@ -10,14 +10,16 @@ import java.util.BitSet;
  * Time: 6:38 PM
  */
 public class BitFieldRequest {
-    private BitSet bitField;
+    private final BitSet bitField;
 
     public BitFieldRequest(BitSet bitField) {
         this.bitField = bitField;
     }
 
-    public BitSet getBitField() {
-        return bitField;
+    public BitFieldRequest(byte[] message, int bitFieldSize) {
+        BitSet bitFieldBuffer = BitSet.valueOf(message);
+        bitField = new BitSet(bitFieldSize);
+        bitField.or(bitFieldBuffer);
     }
 
     public byte[] toTransmit() throws IOException {
@@ -35,5 +37,9 @@ public class BitFieldRequest {
 
         byteBuffer.put(buffer);
         return byteBuffer.array();
+    }
+
+    public BitSet getBitField() {
+        return bitField;
     }
 }
