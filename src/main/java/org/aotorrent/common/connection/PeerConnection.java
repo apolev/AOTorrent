@@ -8,14 +8,12 @@ import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.BufferedInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.io.*;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.nio.ByteBuffer;
 import java.util.BitSet;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Project: AOTorrent
@@ -26,10 +24,10 @@ public class PeerConnection implements Runnable {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(PeerConnection.class);
 
-    private boolean choking = true;
-    private boolean interested = false;
-    private boolean peerChoking = true;
-    private boolean peerInterested = false;
+    private AtomicBoolean choking = new AtomicBoolean(true);
+    private AtomicBoolean interested = new AtomicBoolean(false);
+    private AtomicBoolean peerChoking = new AtomicBoolean(true);
+    private AtomicBoolean peerInterested = new AtomicBoolean(false);
 
     private boolean isRunning = true;
     private boolean handshakeIsOver = false;
@@ -44,6 +42,10 @@ public class PeerConnection implements Runnable {
     private final BitSet bitField;
     @Nullable
     private RequestRequest requestPending = null;
+    @Nullable
+    private IncomingMessagesHandler messagesHandler = null;
+    @Nullable
+    BufferedOutputStream outputStream = null;
 
     public PeerConnection(@NotNull InetSocketAddress socketAddress, @NotNull TorrentEngine torrentEngine) {
         this.socketAddress = socketAddress;
@@ -58,7 +60,7 @@ public class PeerConnection implements Runnable {
             socket = new Socket(socketAddress.getAddress(), socketAddress.getPort());
 
             InputStream inputStream = socket.getInputStream();
-            OutputStream outputStream = socket.getOutputStream();
+            outputStream = new BufferedOutputStream(socket.getOutputStream());
 
             handshake(inputStream, outputStream);
 
@@ -67,9 +69,26 @@ public class PeerConnection implements Runnable {
             if (torrentEngineBitField.cardinality() > 0) {
                 BitFieldRequest bitFieldRequest = new BitFieldRequest(torrentEngineBitField);
                 outputStream.write(bitFieldRequest.toTransmit());
+                outputStream.flush();
             }
 
-            //TODO interest
+            messagesHandler = new IncomingMessagesHandler(new BufferedInputStream(inputStream));
+
+            new Thread(messagesHandler).start();
+
+            while (isRunning) {
+                while (requestPending == null && !iHaveSomethingToDownload()) {
+                    try {
+                        wait();
+                    } catch (InterruptedException e) {
+                        LOGGER.debug("Interrupted!");
+                    }
+                }
+
+                if (requestPending != null) {
+                    sendBlock();
+                }
+            }
 
             Piece piece = null;
 
@@ -93,6 +112,31 @@ public class PeerConnection implements Runnable {
 
     }
 
+    private void sendBlock() {
+        final Piece piece = torrentEngine.getPiece(requestPending.getIndex());
+        if (piece != null) {
+            try {
+                final byte[] bytes = piece.read(requestPending.getBegin(), requestPending.getLength());
+                PieceRequest pieceRequest = new PieceRequest(requestPending.getIndex(), requestPending.getBegin(), bytes);
+                outputStream.write(pieceRequest.toTransmit());
+                outputStream.flush();
+                requestPending = null;
+            } catch (IOException e) {
+                LOGGER.error("file read error", e);
+            }
+
+        }
+
+    }
+
+    private boolean iHaveSomethingToDownload() {
+        BitSet copy = (BitSet) bitField.clone();
+
+        copy.and(torrentEngine.getBitField());
+
+        return (copy.cardinality() > 0) && (!peerChoking.get());
+    }
+
     private void downloadPiece(Piece piece) {
         while (!piece.isComplete()) {
             int blockIndex = piece.getNextEmptyBlockIndex();
@@ -105,6 +149,7 @@ public class PeerConnection implements Runnable {
         final HandshakeRequest peerHandshake = new HandshakeRequest(torrentEngine.getTorrent().getInfoHash(), torrentEngine.getPeerId());
 
         outputStream.write(peerHandshake.toTransmit());
+        outputStream.flush();
 
         final int protocolStringLength = inputStream.read();
 
@@ -129,11 +174,11 @@ public class PeerConnection implements Runnable {
         this.handshakeIsOver = true;
     }
 
-    private class incomingMessagesHandler implements Runnable {
+    private class IncomingMessagesHandler implements Runnable {
 
         private final BufferedInputStream bIS;
 
-        private incomingMessagesHandler(BufferedInputStream bIS) {
+        private IncomingMessagesHandler(BufferedInputStream bIS) {
             this.bIS = bIS;
         }
 
@@ -155,16 +200,16 @@ public class PeerConnection implements Runnable {
 
                         switch (requestType) {
                             case CHOKE:
-                                peerChoking = true;
+                                peerChoking.set(true);
                                 break;
                             case UNCHOKE:
-                                peerChoking = false;
+                                peerChoking.set(false);
                                 break;
                             case INTERESTED:
-                                peerInterested = true;
+                                peerInterested.set(true);
                                 break;
                             case NOT_INTERESTED:
-                                peerInterested = false;
+                                peerInterested.set(false);
                                 break;
                             case HAVE:
                                 receivedHave(message);
@@ -172,11 +217,10 @@ public class PeerConnection implements Runnable {
                             case BIT_FIELD:
                                 if (!isHandshakeIsOver()) {
                                     receivedBitField(message);
-                                    setHandshakeIsOver();
                                 }
                                 break;
                             case REQUEST:
-                                if (!choking) {
+                                if (!choking.get()) {
                                     receivedRequest(message);
                                 }
                                 break;
@@ -192,6 +236,8 @@ public class PeerConnection implements Runnable {
                         }
                     }
 
+                    setHandshakeIsOver();
+                    PeerConnection.this.notify();
                 }
             } catch (IOException e) {
                 e.printStackTrace();

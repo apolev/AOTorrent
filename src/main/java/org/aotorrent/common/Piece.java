@@ -63,6 +63,10 @@ public class Piece implements Comparable<Piece> {
         checkIsComplete();
     }
 
+    public byte[] read(int offset, int length) throws IOException {
+        return storage.read(index, offset, length);
+    }
+
     private void checkIsComplete() { //TODO make this in separate thread
         if (isAllBlocksComplete()) {
             byte[] pieceHash = DigestUtils.sha1(buffer.array());

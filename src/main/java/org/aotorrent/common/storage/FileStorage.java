@@ -86,6 +86,38 @@ public class FileStorage {
         }
     }
 
+    public byte[] read(int pieceIndex, int offset, int length) throws IOException {
+        List<StorageFilesInfo> storageFiles = getAffectedFiles(pieceIndex);
+
+        int index = 0;
+
+        ByteBuffer buf = ByteBuffer.allocate(length);
+        FileChannel fileChannel = null;
+
+        try {
+            for (StorageFilesInfo storageFile : storageFiles) {
+
+                if (storageFile.getLength() < (offset - index)) {
+                    index += storageFile.getLength();
+                } else if (index > offset && index < (offset + length)) {
+                    fileChannel = new RandomAccessFile(path.getCanonicalPath() + "\\" + storageFile.getFile().getCanonicalPath(), "rw").getChannel();
+
+
+                    fileChannel.position(offset - index);
+                    int actuallyRead = fileChannel.read(buf, (offset + length - index));
+                    index += actuallyRead;
+                }
+
+            }
+        } finally {
+            if (fileChannel != null) {
+                fileChannel.close();
+            }
+        }
+
+        return buf.array();
+    }
+
     private List<StorageFilesInfo> getAffectedFiles(int pieceIndex) {
         long pieceStartPosition = pieceIndex * pieceLength;
         long pieceEndPosition = pieceStartPosition + pieceLength;

@@ -35,4 +35,16 @@ public class RequestRequest {
 
         return bb.array();
     }
+
+    public int getIndex() {
+        return index;
+    }
+
+    public int getBegin() {
+        return begin;
+    }
+
+    public int getLength() {
+        return length;
+    }
 }
