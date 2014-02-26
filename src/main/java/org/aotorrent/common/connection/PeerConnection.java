@@ -46,6 +46,8 @@ public class PeerConnection implements Runnable {
     private IncomingMessagesHandler messagesHandler = null;
     @Nullable
     BufferedOutputStream outputStream = null;
+    @Nullable
+    private Piece downloadingPiece;
 
     public PeerConnection(@NotNull InetSocketAddress socketAddress, @NotNull TorrentEngine torrentEngine) {
         this.socketAddress = socketAddress;
@@ -87,13 +89,12 @@ public class PeerConnection implements Runnable {
 
                 if (requestPending != null) {
                     sendBlock();
+                } else if (downloadingPiece != null && !downloadingPiece.isComplete()) {
+                    requestRequest(downloadingPiece);
+                } else if (iHaveSomethingToDownload()) {
+                    downloadingPiece = torrentEngine.getNextPiece(bitField);
+                    requestRequest(downloadingPiece);
                 }
-            }
-
-            Piece piece = null;
-
-            while ((piece = torrentEngine.getNextPiece(bitField)) != null) {
-                downloadPiece(piece);
             }
 
         } catch (IOException e) {
@@ -111,6 +112,7 @@ public class PeerConnection implements Runnable {
         }
 
     }
+
 
     private void sendBlock() {
         final Piece piece = torrentEngine.getPiece(requestPending.getIndex());
@@ -137,10 +139,14 @@ public class PeerConnection implements Runnable {
         return (copy.cardinality() > 0) && (!peerChoking.get());
     }
 
-    private void downloadPiece(Piece piece) {
+    private void requestRequest(Piece piece) throws IOException {
         while (!piece.isComplete()) {
             int blockIndex = piece.getNextEmptyBlockIndex();
-
+            RequestRequest request = new RequestRequest(piece.getIndex(), blockIndex * Piece.DEFAULT_BLOCK_LENGTH, Piece.DEFAULT_BLOCK_LENGTH);
+            if (outputStream != null) {
+                outputStream.write(request.toTransmit());
+                outputStream.flush();
+            }
 
         }
     }

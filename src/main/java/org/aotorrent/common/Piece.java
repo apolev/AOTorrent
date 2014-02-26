@@ -124,4 +124,8 @@ public class Piece implements Comparable<Piece> {
 
         return -1;
     }
+
+    public int getIndex() {
+        return index;
+    }
 }

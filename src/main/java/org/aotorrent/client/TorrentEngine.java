@@ -7,12 +7,13 @@ import org.aotorrent.common.Piece;
 import org.aotorrent.common.Torrent;
 import org.aotorrent.common.connection.PeerConnection;
 import org.aotorrent.common.connection.TrackerConnection;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.UnsupportedEncodingException;
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
-import java.net.URL;
+import java.net.*;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -23,11 +24,13 @@ import java.util.concurrent.Executors;
  * Date:    11/8/13
  */
 public class TorrentEngine implements Runnable {
+    private static final Logger LOGGER = LoggerFactory.getLogger(TorrentEngine.class);
+
     private static final int DEFAULT_PORT = 6967;
 
     private Set<TrackerConnection> trackerConnections = Sets.newLinkedHashSet();
     private Map<InetSocketAddress, PeerConnection> peerConnections = Maps.newHashMap();
-    private final List<Piece> pieces;
+    private List<Piece> pieces;
     private ExecutorService trackerConnectionThreads;
     private ExecutorService peersThreads;
     private byte[] peerId = "-AO0001-000000000000".getBytes();      //TODO need to give right peerid
@@ -35,7 +38,6 @@ public class TorrentEngine implements Runnable {
 
     public TorrentEngine(Torrent torrent) throws UnsupportedEncodingException {
         this.torrent = torrent;
-        this.pieces = createPieces();
     }
 
     private void initTrackers(InetAddress ip, int port) {
@@ -79,7 +81,20 @@ public class TorrentEngine implements Runnable {
 
     @Override
     public void run() {
-        //To change body of implemented methods use File | Settings | File Templates.
+        try {
+            this.pieces = createPieces();
+            initTrackers(Inet4Address.getLocalHost(), DEFAULT_PORT);
+
+            while (!isTorrentDone()) {
+
+            }
+
+
+        } catch (UnsupportedEncodingException e) {
+            LOGGER.error("Unsupported Encoding", e);
+        } catch (UnknownHostException e) {
+            LOGGER.error("Can't determine own ip address", e);
+        }
     }
 
     public Torrent getTorrent() {
@@ -105,7 +120,8 @@ public class TorrentEngine implements Runnable {
         return pieces.size();
     }
 
-    public Piece getNextPiece(BitSet bitField) { //TODO increasePeerCount()
+    @Nullable
+    public Piece getNextPiece(@NotNull BitSet bitField) { //TODO increasePeerCount()
         Set<Piece> sorted = Sets.newTreeSet(pieces);
         Iterator<Piece> iterator = sorted.iterator();
 
@@ -115,8 +131,15 @@ public class TorrentEngine implements Runnable {
                 return piece;
             }
 
+
         }
         return null;
+    }
+
+    private boolean isTorrentDone() {
+        final BitSet bitField = getBitField();
+
+        return bitField.cardinality() == bitField.size();
     }
 
     @Nullable

@@ -17,7 +17,7 @@ public class BitFieldRequest {
     }
 
     public BitFieldRequest(byte[] message, int bitFieldSize) {
-        BitSet bitFieldBuffer = BitSet.valueOf(message);
+        BitSet bitFieldBuffer = fromByteArray(message);
         bitField = new BitSet(bitFieldSize);
         bitField.or(bitFieldBuffer);
     }
@@ -42,4 +42,16 @@ public class BitFieldRequest {
     public BitSet getBitField() {
         return bitField;
     }
+
+    // for java 1.6 compatibility
+    public static BitSet fromByteArray(byte[] bytes) {
+        BitSet bits = new BitSet();
+        for (int i = 0; i < bytes.length * 8; i++) {
+            if ((bytes[bytes.length - i / 8 - 1] & (1 << (i % 8))) > 0) {
+                bits.set(i);
+            }
+        }
+        return bits;
+    }
+
 }
