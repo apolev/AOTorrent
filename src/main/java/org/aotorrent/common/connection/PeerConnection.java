@@ -46,13 +46,9 @@ public class PeerConnection implements Runnable {
     @NotNull
     private final BitSet bitField;
     @Nullable
-    private RequestRequest requestPending = null;
-    @Nullable
     private IncomingMessagesHandler messagesHandler = null;
     @Nullable
-    BufferedOutputStream outputStream = null;
-    @Nullable
-    private Piece downloadingPiece;
+    private BufferedOutputStream outputStream = null;
     @NotNull
     private LinkedBlockingQueue<ConnectionMessage> incomingMessages = new LinkedBlockingQueue<ConnectionMessage>();
 
@@ -118,10 +114,9 @@ public class PeerConnection implements Runnable {
         if (piece != null) {
             try {
                 final byte[] bytes = piece.read(begin, length);
-                PieceRequest pieceRequest = new PieceRequest(requestPending.getIndex(), requestPending.getBegin(), bytes);
+                PieceRequest pieceRequest = new PieceRequest(index, begin, bytes);
                 outputStream.write(pieceRequest.toTransmit());
                 outputStream.flush();
-                requestPending = null;
             } catch (IOException e) {
                 LOGGER.error("file read error", e);
             }
