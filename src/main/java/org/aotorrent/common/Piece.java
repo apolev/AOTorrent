@@ -79,9 +79,9 @@ public class Piece implements Comparable<Piece> {
                     e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
                 }
             } else {
-                buffer.clear();
                 Arrays.fill(blockComplete, Boolean.FALSE);
             }
+            buffer.clear();
         }
     }
 

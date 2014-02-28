@@ -130,8 +130,6 @@ public class TorrentEngine implements Runnable {
             if (bitField.get(i) && !piece.isComplete()) {
                 return piece;
             }
-
-
         }
         return null;
     }
