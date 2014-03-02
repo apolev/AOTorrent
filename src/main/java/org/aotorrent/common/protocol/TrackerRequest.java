@@ -46,7 +46,7 @@ public class TrackerRequest {
 
         StringBuilder requestString = new StringBuilder(url.toString())
                 .append(firstSeparator)
-                .append("info_hash=").append(new String(URLCodec.encodeUrl(null, infoHash))).append("&")
+                .append("info_hash=").append(new String(URLCodec.encodeUrl(null, infoHash)).replace("+", "%20")).append("&")
                 .append("peer_id=").append(new String(URLCodec.encodeUrl(null, peerId))).append("&")
                 .append("port=").append(port).append("&")
                 .append("uploaded=").append(uploaded).append("&")
@@ -56,6 +56,7 @@ public class TrackerRequest {
                 .append("event=").append(event).append("&")
                 .append("numwant=").append(numWant).append("&")
                 .append("trackerid=").append(trackerId);
+
 
         return new URL(requestString.toString());
     }

@@ -18,8 +18,20 @@ public class ReceivedRequestMessage implements ConnectionMessage {
         this.length = length;
     }
 
+    public int getIndex() {
+        return index;
+    }
+
+    public int getBegin() {
+        return begin;
+    }
+
+    public int getLength() {
+        return length;
+    }
+
     @Override
     public void processMessage(PeerConnection peerConnection) {
-        peerConnection.sendBlock(index, begin, length);
+        peerConnection.processMessage(this);
     }
 }

@@ -10,6 +10,6 @@ import org.aotorrent.common.connection.PeerConnection;
 public class UnchokeMessage implements ConnectionMessage {
     @Override
     public void processMessage(PeerConnection peerConnection) {
-        peerConnection.unchoke();
+        peerConnection.processMessage(this);
     }
 }

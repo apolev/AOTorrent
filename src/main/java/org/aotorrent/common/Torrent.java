@@ -44,7 +44,8 @@ public class Torrent {
     private final String comment;
     private final String createdBy;
     private final String encoding = DEFAULT_TORRENT_ENCODING;
-    private final int pieceLength = DEFAULT_PIECE_LENGTH;
+    private String downloadPath = "./";
+    private int pieceLength = DEFAULT_PIECE_LENGTH;
     private final String pieces;  //TODO should be array of bytes
     private final boolean singleFile = false;
     private final File root;
@@ -88,33 +89,44 @@ public class Torrent {
         this.fileStorage = new FileStorage(torrentFiles, pieceLength, new File("."));
     }
 
-    public Torrent(@NotNull final InputStream is) throws IOException, InvalidBEncodingException {
+    public Torrent(@NotNull final InputStream is, String downloadPath) throws IOException, InvalidBEncodingException {
+        this.downloadPath = downloadPath;
         Map<String, Value> parsed = Parser.parse(is);
         String announceURL = parsed.get("announce").getString();
         announce = Lists.<List<String>>newArrayList(Lists.newArrayList(announceURL));
-        comment = parsed.get("comment").getString();
+        comment = String.valueOf(parsed.get("comment"));
         createdBy = parsed.get("created by").getString();
         Map<String, Value> info = parsed.get("info").getMap();
         root = new File(info.get("name").getString());
         pieces = info.get("pieces").getString();
+        pieceLength = (int) info.get("piece length").getLong();
 
         files = Lists.newArrayList();
         long allFilesSize = 0;
 
-        for (Value file : info.get("files").getList()) {
-            Map<String, Value> valueMap = file.getMap();
+        if (info.get("files") != null) {
+            for (Value file : info.get("files").getList()) {
+                Map<String, Value> valueMap = file.getMap();
 
+                TorrentFile tf = new TorrentFile(
+                        downloadPath + StringUtils.join(valueMap.get("path").getList(), '\\'),
+                        valueMap.get("length").getLong(),
+                        "");
+
+                files.add(tf);
+
+                allFilesSize += tf.getLength();
+            }
+            this.size = allFilesSize;
+        } else {
             TorrentFile tf = new TorrentFile(
-                    StringUtils.join(valueMap.get("path").getList(), '\\'),
-                    valueMap.get("length").getLong(),
+                    info.get("name").getString(),
+                    info.get("length").getLong(),
                     "");
-
             files.add(tf);
-
-            allFilesSize += tf.getLength();
+            this.size = info.get("length").getLong();
         }
 
-        this.size = allFilesSize;
 
         infoHash = getHash(info);
 
@@ -228,5 +240,9 @@ public class Torrent {
                 ", root=" + root +
                 ", files=" + files +
                 '}';
+    }
+
+    public int getPieceLength() {
+        return pieceLength;
     }
 }

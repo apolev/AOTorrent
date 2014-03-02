@@ -17,8 +17,13 @@ public class ReceivedBlockMessage implements ConnectionMessage {
         this.piece = piece;
     }
 
+    @NotNull
+    public Piece getPiece() {
+        return piece;
+    }
+
     @Override
     public void processMessage(PeerConnection peerConnection) {
-        peerConnection.proceedDownload(piece);
+        peerConnection.processMessage(this);
     }
 }

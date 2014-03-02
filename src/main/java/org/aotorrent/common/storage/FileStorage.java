@@ -71,7 +71,7 @@ public class FileStorage {
             FileChannel fileChannel = null;
 
             try {
-                fileChannel = new RandomAccessFile(path.getCanonicalPath() + "\\" + storageFile.getFile().getCanonicalPath(), "rw").getChannel();
+                fileChannel = new RandomAccessFile(storageFile.getFile().getCanonicalPath(), "rw").getChannel();
 
                 fileChannel.position(storageFile.getFileOffset());
 
@@ -133,7 +133,7 @@ public class FileStorage {
 
             StorageFilesInfo sfi = null;
 
-            if ((fileStartPosition < pieceStartPosition) && (fileEndPosition > pieceStartPosition)) { // file starts earlier than piece, but included in it
+            if ((fileStartPosition <= pieceStartPosition) && (fileEndPosition > pieceStartPosition)) { // file starts earlier than piece, but included in it
                 if (fileEndPosition >= pieceEndPosition) { // file takes whole piece
                     sfi = new StorageFilesInfo(new File(file.getPath()), 0, pieceStartPosition - fileStartPosition, pieceLength);
                 } else if (fileEndPosition < pieceEndPosition) { // file takes first part of piece
@@ -150,6 +150,7 @@ public class FileStorage {
             }
 
             fileStartPosition = fileEndPosition;
+            fileIndex++;
         }
         return storageFilesInfos;
     }

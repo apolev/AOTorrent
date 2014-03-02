@@ -6,7 +6,7 @@ import java.nio.ByteBuffer;
 /**
  * Created by dmitry on 2/25/14.
  */
-public class HaveRequest {
+public class HaveRequest implements PeerRequest {
     private final int index;
 
     public HaveRequest(byte[] message) {
@@ -20,6 +20,7 @@ public class HaveRequest {
         this.index = index;
     }
 
+    @Override
     public byte[] toTransmit() throws IOException {
         ByteBuffer bb = ByteBuffer.allocate(4 + 1 + 4);
 

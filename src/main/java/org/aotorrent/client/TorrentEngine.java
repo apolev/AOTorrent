@@ -7,6 +7,7 @@ import org.aotorrent.common.Piece;
 import org.aotorrent.common.Torrent;
 import org.aotorrent.common.connection.PeerConnection;
 import org.aotorrent.common.connection.TrackerConnection;
+import org.aotorrent.common.connection.events.StopMessage;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -46,6 +47,8 @@ public class TorrentEngine implements Runnable {
 
         trackerConnectionThreads = Executors.newFixedThreadPool(trackers.size());
 
+        peersThreads = Executors.newFixedThreadPool(5);
+
         for (URL trackerUrl : trackers) {
             TrackerConnection trackerConnection = new TrackerConnection(this, trackerUrl, torrent.getInfoHash(), peerId, ip, port);
             trackerConnectionThreads.submit(trackerConnection);
@@ -70,10 +73,10 @@ public class TorrentEngine implements Runnable {
     private List<Piece> createPieces() throws UnsupportedEncodingException {
         List<Piece> pieceList = Lists.newArrayList();
 
-        int pieceCount = (int) Math.ceil((double) torrent.getSize() / Torrent.DEFAULT_PIECE_LENGTH);
+        int pieceCount = (int) Math.ceil((double) torrent.getSize() / torrent.getPieceLength());
         for (int i = 0; i < pieceCount; i++) {
-            byte[] hash = Arrays.copyOfRange(torrent.getPieces().getBytes(Torrent.DEFAULT_TORRENT_ENCODING), i * Torrent.DEFAULT_PIECE_LENGTH, (i + 1) * Torrent.DEFAULT_PIECE_LENGTH - 1);
-            Piece piece = new Piece(i, Torrent.DEFAULT_PIECE_LENGTH, hash, torrent.getFileStorage());
+            byte[] hash = Arrays.copyOfRange(torrent.getPieces().getBytes(Torrent.DEFAULT_TORRENT_ENCODING), i * Torrent.INFO_HASH_LENGTH, (i + 1) * Torrent.INFO_HASH_LENGTH);
+            Piece piece = new Piece(i, torrent.getPieceLength(), hash, torrent.getFileStorage());
             pieceList.add(piece);
         }
         return pieceList;
@@ -86,14 +89,22 @@ public class TorrentEngine implements Runnable {
             initTrackers(Inet4Address.getLocalHost(), DEFAULT_PORT);
 
             while (!isTorrentDone()) {
-
+                wait(1000);
             }
 
+            for (PeerConnection peerConnection : peerConnections.values()) {
+                peerConnection.processMessage(new StopMessage());
+            }
+
+            peersThreads.shutdown();
+            trackerConnectionThreads.shutdown();
 
         } catch (UnsupportedEncodingException e) {
             LOGGER.error("Unsupported Encoding", e);
         } catch (UnknownHostException e) {
             LOGGER.error("Can't determine own ip address", e);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
         }
     }
 

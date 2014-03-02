@@ -5,7 +5,8 @@ import java.nio.ByteBuffer;
 /**
  * Created by dmitry on 2/25/14.
  */
-public class ChokeRequest {
+public class ChokeRequest implements PeerRequest {
+    @Override
     public byte[] toTransmit() {
         ByteBuffer bb = ByteBuffer.allocate(4 + 1);
 

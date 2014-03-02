@@ -6,6 +6,7 @@ import org.apache.commons.codec.digest.DigestUtils;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
+import java.util.BitSet;
 
 /**
  * Project: AOTorrent
@@ -24,7 +25,7 @@ public class Piece implements Comparable<Piece> {
 
     private ByteBuffer buffer;
 
-    private boolean[] blockComplete;
+    private BitSet blockComplete;
     private boolean complete = false;
 
     private int peerCount = 0;
@@ -32,7 +33,7 @@ public class Piece implements Comparable<Piece> {
     public Piece(int index, int pieceLength, byte[] hash, FileStorage storage) {
         this.index = index;
         this.pieceLength = pieceLength;
-        blockComplete = new boolean[pieceLength / DEFAULT_BLOCK_LENGTH];
+        blockComplete = new BitSet(pieceLength / DEFAULT_BLOCK_LENGTH);
         this.hash = hash;
         this.storage = storage;
     }
@@ -46,7 +47,12 @@ public class Piece implements Comparable<Piece> {
             return; //TODO Exception
         }
 
-        buffer.put(data, offset, data.length);
+        if (buffer == null) {
+            buffer = ByteBuffer.allocate(pieceLength);
+        }
+
+        buffer.position(offset);
+        buffer.put(data);
 
         int dataBlocks = data.length / DEFAULT_BLOCK_LENGTH;
         int blockOffset = offset / DEFAULT_BLOCK_LENGTH;
@@ -57,7 +63,7 @@ public class Piece implements Comparable<Piece> {
         }
 
         for (int i = 0; i < dataBlocks; i++) {
-            blockComplete[i + blockOffset] = true;
+            blockComplete.set(i + blockOffset);
         }
 
         checkIsComplete();
@@ -79,15 +85,14 @@ public class Piece implements Comparable<Piece> {
                     e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
                 }
             } else {
-                Arrays.fill(blockComplete, Boolean.FALSE);
+                blockComplete.clear();
             }
-            buffer.clear();
+            buffer = null;
         }
     }
 
     private boolean isAllBlocksComplete() {
-        for (boolean b : blockComplete) if (!b) return false;
-        return true;
+        return blockComplete.cardinality() == (pieceLength / DEFAULT_BLOCK_LENGTH);
     }
 
     public int getPeerCount() {
@@ -116,13 +121,16 @@ public class Piece implements Comparable<Piece> {
     }
 
     public int getNextEmptyBlockIndex() {
-        for (int i = 0; i < blockComplete.length; i++) {
-            if (!blockComplete[i]) {
-                return i;
-            }
-        }
+        final int clearBit = blockComplete.nextClearBit(0);
+        return (clearBit <= getBlockCount()) ? clearBit : -1;
+    }
 
-        return -1;
+    public int getBlockCount() {
+        return (pieceLength / DEFAULT_BLOCK_LENGTH);
+    }
+
+    public boolean isClear() {
+        return blockComplete.isEmpty();
     }
 
     public int getIndex() {

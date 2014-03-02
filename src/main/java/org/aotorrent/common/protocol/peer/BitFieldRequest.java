@@ -9,27 +9,31 @@ import java.util.BitSet;
  * Date: 2/25/14
  * Time: 6:38 PM
  */
-public class BitFieldRequest {
+public class BitFieldRequest implements PeerRequest {
     private final BitSet bitField;
+    private final int size;
 
-    public BitFieldRequest(BitSet bitField) {
+    public BitFieldRequest(BitSet bitField, int size) {
         this.bitField = bitField;
+        this.size = size;
     }
 
     public BitFieldRequest(byte[] message, int bitFieldSize) {
         BitSet bitFieldBuffer = fromByteArray(message);
         bitField = new BitSet(bitFieldSize);
         bitField.or(bitFieldBuffer);
+        size = message.length * 8;
     }
 
+    @Override
     public byte[] toTransmit() throws IOException {
-        int messageSize = (bitField.length() + 7) / 8 + 1;
-        final ByteBuffer byteBuffer = ByteBuffer.allocate(messageSize + 4).putInt(messageSize);
+        int messageSize = (size + 7) / 8 + 1;
+        final ByteBuffer byteBuffer = ByteBuffer.allocate(4 + messageSize).putInt(messageSize);
 
         byteBuffer.put((byte) RequestType.BIT_FIELD.requestCode);
 
-        byte[] buffer = new byte[messageSize];
-        for (int i = 0; i < bitField.length(); i++) {
+        byte[] buffer = new byte[messageSize - 1];
+        for (int i = 0; i < size; i++) {
             if (bitField.get(i)) {
                 buffer[buffer.length - i / 8 - 1] |= 1 << (i % 8);
             }

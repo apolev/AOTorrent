@@ -12,7 +12,7 @@ import java.util.Arrays;
  * Date: 2/21/14
  * Time: 5:37 PM
  */
-public class HandshakeRequest {
+public class HandshakeRequest implements PeerRequest {
     public static final String DEFAULT_PROTOCOL_STRING = "BitTorrent protocol";
     public static final byte[] DEFAULT_RESERVED_BITS = {0, 0, 0, 0, 0, 0, 0, 0};
     private static final int BYTE_MAX = 0xFF;
@@ -49,6 +49,7 @@ public class HandshakeRequest {
         this.peerId = peerId;
     }
 
+    @Override
     public byte[] toTransmit() throws IOException {
         ByteArrayOutputStream os = new ByteArrayOutputStream();
         os.write(protocolString.length());

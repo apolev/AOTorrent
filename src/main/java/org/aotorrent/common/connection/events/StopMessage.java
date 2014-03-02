@@ -3,11 +3,10 @@ package org.aotorrent.common.connection.events;
 import org.aotorrent.common.connection.PeerConnection;
 
 /**
- * User: dnapolov
- * Date: 2/28/14
- * Time: 7:38 PM
+ * Created by dmitry on 3/3/14.
  */
-public class ChokeMessage implements ConnectionMessage {
+public class StopMessage implements ConnectionMessage {
+
     @Override
     public void processMessage(PeerConnection peerConnection) {
         peerConnection.processMessage(this);
