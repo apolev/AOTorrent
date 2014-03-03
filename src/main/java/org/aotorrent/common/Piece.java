@@ -110,6 +110,9 @@ public class Piece implements Comparable<Piece> {
     @Override
     public int compareTo(Piece otherPiece) {
         if (isComplete() == otherPiece.isComplete()) {
+            if (peerCount == otherPiece.peerCount) {
+                return Arrays.hashCode(hash) - Arrays.hashCode(otherPiece.hash);
+            }
             return peerCount - otherPiece.peerCount;
         } else {
             if (isComplete()) {
@@ -135,5 +138,27 @@ public class Piece implements Comparable<Piece> {
 
     public int getIndex() {
         return index;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        Piece piece = (Piece) o;
+
+        if (index != piece.index) return false;
+        if (pieceLength != piece.pieceLength) return false;
+        if (!Arrays.equals(hash, piece.hash)) return false;
+
+        return true;
+    }
+
+    @Override
+    public int hashCode() {
+        int result = index;
+        result = 31 * result + pieceLength;
+        result = 31 * result + Arrays.hashCode(hash);
+        return result;
     }
 }

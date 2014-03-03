@@ -89,4 +89,14 @@ public class HandshakeRequest implements PeerRequest {
 
         return true;
     }
+
+    @Override
+    public String toString() {
+        return "HandshakeRequest{" +
+                "protocolString='" + protocolString + '\'' +
+                ", reserved=" + Arrays.toString(reserved) +
+                ", infoHash=" + Arrays.toString(infoHash) +
+                ", peerId=" + Arrays.toString(peerId) +
+                '}';
+    }
 }

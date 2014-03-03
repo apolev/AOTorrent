@@ -48,4 +48,13 @@ public class RequestRequest implements PeerRequest {
     public int getLength() {
         return length;
     }
+
+    @Override
+    public String toString() {
+        return "RequestRequest{" +
+                "index=" + index +
+                ", begin=" + begin +
+                ", length=" + length +
+                '}';
+    }
 }

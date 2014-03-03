@@ -16,4 +16,9 @@ public class UnchokeRequest implements PeerRequest {
 
         return bb.array();
     }
+
+    @Override
+    public String toString() {
+        return this.getClass().getSimpleName();
+    }
 }

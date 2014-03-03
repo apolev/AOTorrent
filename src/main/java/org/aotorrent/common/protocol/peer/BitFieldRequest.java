@@ -58,4 +58,10 @@ public class BitFieldRequest implements PeerRequest {
         return bits;
     }
 
+    @Override
+    public String toString() {
+        return "BitFieldRequest{" +
+                "bitField=" + bitField +
+                '}';
+    }
 }

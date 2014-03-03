@@ -51,4 +51,13 @@ public class PieceRequest implements PeerRequest {
     public byte[] getBlock() {
         return block;
     }
+
+    @Override
+    public String toString() {
+        return "PieceRequest{" +
+                "index=" + index +
+                ", begin=" + begin +
+                ", blockSize=" + block.length +
+                '}';
+    }
 }

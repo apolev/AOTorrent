@@ -7,6 +7,7 @@ import org.aotorrent.common.Piece;
 import org.aotorrent.common.Torrent;
 import org.aotorrent.common.connection.PeerConnection;
 import org.aotorrent.common.connection.TrackerConnection;
+import org.aotorrent.common.connection.events.SendHaveMessage;
 import org.aotorrent.common.connection.events.StopMessage;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -27,11 +28,12 @@ import java.util.concurrent.Executors;
 public class TorrentEngine implements Runnable {
     private static final Logger LOGGER = LoggerFactory.getLogger(TorrentEngine.class);
 
-    private static final int DEFAULT_PORT = 6967;
+    private static final int DEFAULT_PORT = 6968;
 
     private Set<TrackerConnection> trackerConnections = Sets.newLinkedHashSet();
     private Map<InetSocketAddress, PeerConnection> peerConnections = Maps.newHashMap();
     private List<Piece> pieces;
+    private final Set<Piece> inProgress = Sets.newHashSet();
     private ExecutorService trackerConnectionThreads;
     private ExecutorService peersThreads;
     private byte[] peerId = "-AO0001-000000000000".getBytes();      //TODO need to give right peerid
@@ -89,7 +91,7 @@ public class TorrentEngine implements Runnable {
             initTrackers(Inet4Address.getLocalHost(), DEFAULT_PORT);
 
             while (!isTorrentDone()) {
-                wait(1000);
+                Thread.sleep(1000);
             }
 
             for (PeerConnection peerConnection : peerConnections.values()) {
@@ -138,22 +140,54 @@ public class TorrentEngine implements Runnable {
 
         for (int i = 0; i < sorted.size(); i++) {
             Piece piece = iterator.next();
-            if (bitField.get(i) && !piece.isComplete()) {
-                return piece;
+
+            synchronized (inProgress) {
+                if (bitField.get(piece.getIndex()) && !piece.isComplete() && !inProgress.contains(piece)) {
+                    inProgress.add(piece);
+                    return piece;
+                }
             }
         }
         return null;
     }
 
+    public boolean isUsefulPeer(@NotNull BitSet bitField) {
+        BitSet currentBitField = this.getBitField();
+
+        for (int i = 0; i < pieces.size(); i++) {
+            if (!currentBitField.get(i) && bitField.get(i)) {
+                return true;
+            }
+
+        }
+
+        return false;
+    }
+
     private boolean isTorrentDone() {
         final BitSet bitField = getBitField();
 
-        return bitField.cardinality() == bitField.size();
+        return bitField.cardinality() == pieces.size();
     }
 
     @Nullable
     public Piece getPiece(int index) {
         return pieces.get(index);
 
+    }
+
+    public void setPieceDone(Piece piece) {
+        synchronized (inProgress) {
+            inProgress.remove(piece);
+        }
+        for (PeerConnection peerConnection : peerConnections.values()) {
+            peerConnection.addIncomingMessage(new SendHaveMessage(piece.getIndex()));
+        }
+    }
+
+    public void setPieceDone(Set<Piece> pieces) {
+        synchronized (inProgress) {
+            inProgress.removeAll(pieces);
+        }
     }
 }

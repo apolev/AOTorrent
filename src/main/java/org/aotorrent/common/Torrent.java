@@ -95,7 +95,7 @@ public class Torrent {
         String announceURL = parsed.get("announce").getString();
         announce = Lists.<List<String>>newArrayList(Lists.newArrayList(announceURL));
         comment = String.valueOf(parsed.get("comment"));
-        createdBy = parsed.get("created by").getString();
+        createdBy = String.valueOf(parsed.get("created by"));
         Map<String, Value> info = parsed.get("info").getMap();
         root = new File(info.get("name").getString());
         pieces = info.get("pieces").getString();

@@ -1,5 +1,6 @@
 package org.aotorrent.common.connection;
 
+import com.google.common.collect.Sets;
 import org.aotorrent.client.TorrentEngine;
 import org.aotorrent.common.Piece;
 import org.aotorrent.common.connection.events.*;
@@ -14,6 +15,7 @@ import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.nio.ByteBuffer;
 import java.util.BitSet;
+import java.util.Set;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -52,12 +54,16 @@ public class PeerConnection implements Runnable {
     @Nullable
     private BufferedOutputStream outputStream = null;
     @NotNull
+    private Set<Piece> piecesInProgress = Sets.newHashSet();
+    private final int piecesMax;
+    @NotNull
     private LinkedBlockingQueue<ConnectionMessage> incomingMessages = new LinkedBlockingQueue<ConnectionMessage>();
 
     public PeerConnection(@NotNull InetSocketAddress socketAddress, @NotNull TorrentEngine torrentEngine) {
         this.socketAddress = socketAddress;
         this.torrentEngine = torrentEngine;
         this.bitField = new BitSet(torrentEngine.getPieceCount());
+        this.piecesMax = 10;
     }
 
     @Override
@@ -77,6 +83,8 @@ public class PeerConnection implements Runnable {
 
             final PeerRequest bitFieldRequest = new BitFieldRequest(torrentEngineBitField, torrentEngine.getPieceCount());
             sendToPeer(bitFieldRequest);
+
+            unchoke();
 
             messagesHandler = new IncomingMessagesHandler(inputStream);
 
@@ -135,12 +143,25 @@ public class PeerConnection implements Runnable {
 
     }
 
-    private void requestRequests(Piece piece) throws IOException { // requesting all blocks for this piece
+    private void requestRequests() throws IOException { // requesting all blocks for this piece
         //int blockIndex = piece.getNextEmptyBlockIndex();
-        for (int i = 0; i < (piece.getBlockCount()); i++) {
-            PeerRequest request = new RequestRequest(piece.getIndex(), i * Piece.DEFAULT_BLOCK_LENGTH, Piece.DEFAULT_BLOCK_LENGTH);
-            sendToPeer(request);
+
+        while (piecesInProgress.size() < piecesMax) {
+            final Piece piece = torrentEngine.getNextPiece(bitField);
+            if (piece != null) {
+                for (int i = 0; i < (piece.getBlockCount()); i++) {
+                    PeerRequest request = new RequestRequest(piece.getIndex(), i * Piece.DEFAULT_BLOCK_LENGTH, Piece.DEFAULT_BLOCK_LENGTH);
+                    sendToPeer(request);
+                }
+                piecesInProgress.add(piece);
+            } else {
+                break;
+            }
         }
+/*
+        final Piece piece = torrentEngine.getPiece(1951);
+        PeerRequest request = new RequestRequest(piece.getIndex(), 0, Piece.DEFAULT_BLOCK_LENGTH);
+        sendToPeer(request);*/
 
     }
 
@@ -216,41 +237,52 @@ public class PeerConnection implements Runnable {
         }
     }
 
-    private void startDownload() {
-        final Piece piece = torrentEngine.getNextPiece(bitField);
-        if (piece != null) {
-            proceedDownload(piece);
+    private void haveMessage(int pieceIndex) {
+        try {
+            HaveRequest request = new HaveRequest(pieceIndex);
+            sendToPeer(request);
+
+        } catch (IOException e) {
+            LOGGER.error("can't send not interested request", e);
         }
     }
 
-    @Nullable
-    private Piece proceedDownload(final Piece piece) {
+    private void startDownload() {
+        if (torrentEngine.isUsefulPeer(bitField)) {
+            proceedDownload(null);
+        }
+    }
+
+    private void proceedDownload(@Nullable final Piece piece) {
+
         try {
+
+            if (!interested.getAndSet(true)) {
+                interested();
+            }
+
             if (!peerChoking.get()) {
 
-                if (!interested.getAndSet(true)) {
-                    interested();
+                if (piece != null && piece.isComplete()) {
+                    torrentEngine.setPieceDone(piece);
+                    piecesInProgress.remove(piece);
                 }
 
-                if (piece.isComplete()) {
-                    final Piece nextPiece = torrentEngine.getNextPiece(bitField);
-                    if (nextPiece != null) {
-                        requestRequests(nextPiece);
-                        isDownloading = true;
-                        return nextPiece;
-                    }
-                } else if (piece.isClear()) {
-                    requestRequests(piece);
-                    isDownloading = true;
-                    return piece;
-                }
+                requestRequests();
+                isDownloading = true;
+            } else {
+                torrentEngine.setPieceDone(piecesInProgress);
+                piecesInProgress.clear();
             }
         } catch (IOException e) {
-            LOGGER.error("Request Sending Failed", e);
+            e.printStackTrace();
         }
-        isDownloading = false;
-        return null;
+
+        if (piecesInProgress.isEmpty()) {
+            isDownloading = false;
+        }
     }
+
 
     public void processMessage(ReceivedRequestMessage message) {
         sendBlock(message.getIndex(), message.getBegin(), message.getLength());
@@ -280,6 +312,20 @@ public class PeerConnection implements Runnable {
     public void processMessage(StopMessage stopMessage) {
         isRunning = false;
         messagesHandlerThread.interrupt();
+    }
+
+    public void processMessage(ReceivedHaveMessage haveMessage) {
+        if (piecesInProgress.size() < piecesMax) {
+            proceedDownload(null);
+        }
+    }
+
+    public void addIncomingMessage(ConnectionMessage message) {
+        incomingMessages.add(message);
+    }
+
+    public void processMessage(SendHaveMessage sendHaveMessage) {
+        haveMessage(sendHaveMessage.getPieceIndex());
     }
 
     private class IncomingMessagesHandler implements Runnable {
@@ -375,6 +421,7 @@ public class PeerConnection implements Runnable {
         private void receivedHave(byte[] message) {
             final HaveRequest haveRequest = new HaveRequest(message);
             bitField.set(haveRequest.getIndex());
+            PeerConnection.this.incomingMessages.add(new ReceivedHaveMessage());
         }
 
         private void receivedBitField(byte[] message) {

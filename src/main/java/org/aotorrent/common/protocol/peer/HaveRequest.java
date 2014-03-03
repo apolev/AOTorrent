@@ -11,6 +11,7 @@ public class HaveRequest implements PeerRequest {
 
     public HaveRequest(byte[] message) {
         final ByteBuffer bb = ByteBuffer.allocate(message.length).put(message);
+        bb.flip();
 
         index = bb.getInt();
 
