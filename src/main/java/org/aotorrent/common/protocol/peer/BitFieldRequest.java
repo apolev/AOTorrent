@@ -21,9 +21,7 @@ public class BitFieldRequest implements PeerRequest {
     }
 
     public BitFieldRequest(byte[] message, int bitFieldSize) {
-        BitSet bitFieldBuffer = fromByteArray(message);
-        bitField = new BitSet(bitFieldSize);
-        bitField.or(bitFieldBuffer);
+        bitField = fromByteArray(message);
         size = message.length * 8;
     }
 
@@ -53,7 +51,7 @@ public class BitFieldRequest implements PeerRequest {
     public static BitSet fromByteArray(byte[] bytes) {
         BitSet bits = new BitSet();
         for (int i = 0; i < bytes.length * 8; i++) {
-            if ((bytes[bytes.length - i / 8 - 1] & (1 << (i % 8))) > 0) {
+            if ((bytes[i / 8] & (1 << (7 - i % 8))) > 0) {
                 bits.set(i);
             }
         }

@@ -74,11 +74,21 @@ public class TorrentEngine implements Runnable {
         List<Piece> pieceList = Lists.newArrayList();
 
         int pieceCount = (int) Math.ceil((double) torrent.getSize() / torrent.getPieceLength());
-        for (int i = 0; i < pieceCount; i++) {
+        for (int i = 0; i < pieceCount - 1; i++) {
             byte[] hash = Arrays.copyOfRange(torrent.getPieces().getBytes(Torrent.DEFAULT_TORRENT_ENCODING), i * Torrent.INFO_HASH_LENGTH, (i + 1) * Torrent.INFO_HASH_LENGTH);
             Piece piece = new Piece(i, torrent.getPieceLength(), hash, torrent.getFileStorage());
             pieceList.add(piece);
         }
+
+        byte[] hash = Arrays.copyOfRange(torrent.getPieces().getBytes(Torrent.DEFAULT_TORRENT_ENCODING), (pieceCount - 1) * Torrent.INFO_HASH_LENGTH, (pieceCount) * Torrent.INFO_HASH_LENGTH);
+        int lastPieceLength = (int) (torrent.getSize() % torrent.getPieceLength());
+        if (lastPieceLength == 0) {
+            lastPieceLength = torrent.getPieceLength();
+        }
+        Piece piece = new Piece((pieceCount - 1), lastPieceLength, hash, torrent.getFileStorage());
+
+        pieceList.add(piece);
+
         return pieceList;
     }
 
@@ -93,11 +103,17 @@ public class TorrentEngine implements Runnable {
             }
 
             for (PeerConnection peerConnection : peerConnections.values()) {
-                peerConnection.processMessage(new StopMessage());
+                peerConnection.addIncomingMessage(new StopMessage());
+            }
+
+            for (TrackerConnection trackerConnection : trackerConnections) {
+                trackerConnection.setShutdown(true);
             }
 
             peersThreads.shutdown();
+            peersThreads.shutdownNow();
             trackerConnectionThreads.shutdown();
+            trackerConnectionThreads.shutdownNow();
 
         } catch (UnsupportedEncodingException e) {
             LOGGER.error("Unsupported Encoding", e);
@@ -166,7 +182,6 @@ public class TorrentEngine implements Runnable {
     @Nullable
     public Piece getPiece(int index) {
         return pieces.get(index);
-
     }
 
     public void setPieceDone(@NotNull Piece piece) {

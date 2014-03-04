@@ -36,19 +36,20 @@ public class Piece implements Comparable<Piece> {
     public Piece(int index, int pieceLength, byte[] hash, FileStorage storage) {
         this.index = index;
         this.pieceLength = pieceLength;
-        blockComplete = new BitSet(pieceLength / DEFAULT_BLOCK_LENGTH);
+        blockComplete = new BitSet();
         this.hash = hash;
         this.storage = storage;
     }
 
     public void write(byte[] data, int offset) {
         if ((data.length + offset) > pieceLength) {
+            LOGGER.error("Received block is bigger than piece");
             return; //TODO exception
         }
 
-        if (data.length < DEFAULT_BLOCK_LENGTH) {
+        /*if (data.length < DEFAULT_BLOCK_LENGTH) {
             return; //TODO Exception
-        }
+        }*/
 
         if (buffer == null) {
             buffer = ByteBuffer.allocate(pieceLength);
@@ -57,7 +58,7 @@ public class Piece implements Comparable<Piece> {
         buffer.position(offset);
         buffer.put(data);
 
-        int dataBlocks = data.length / DEFAULT_BLOCK_LENGTH;
+        int dataBlocks = (int) Math.ceil((double) data.length / (double) DEFAULT_BLOCK_LENGTH);
         int blockOffset = offset / DEFAULT_BLOCK_LENGTH;
 
         if (buffer == null) {
@@ -97,7 +98,7 @@ public class Piece implements Comparable<Piece> {
     }
 
     private boolean isAllBlocksComplete() {
-        return blockComplete.cardinality() == (pieceLength / DEFAULT_BLOCK_LENGTH);
+        return blockComplete.cardinality() == getBlockCount();
     }
 
     public int getPeerCount() {
@@ -125,7 +126,7 @@ public class Piece implements Comparable<Piece> {
     }
 
     public int getBlockCount() {
-        return (pieceLength / DEFAULT_BLOCK_LENGTH);
+        return (int) Math.ceil((double) pieceLength / (double) DEFAULT_BLOCK_LENGTH);
     }
 
     public int getIndex() {

@@ -53,7 +53,7 @@ public class TrackerConnection implements Runnable {
 
     @Override
     public void run() {
-        while (!shutdown) {
+        while (!shutdown && !Thread.interrupted()) {
             try {
                 if (nextRequest != null && nextRequest.after(new Date())) {
                     Thread.sleep(nextRequest.getTime() - new Date().getTime());
@@ -61,6 +61,7 @@ public class TrackerConnection implements Runnable {
                     getPeers();
                 }
             } catch (InterruptedException e) {
+                LOGGER.debug("Interrupted!");
             }
         }
     }
@@ -109,4 +110,7 @@ public class TrackerConnection implements Runnable {
     }
 
 
+    public void setShutdown(boolean shutdown) {
+        this.shutdown = shutdown;
+    }
 }
