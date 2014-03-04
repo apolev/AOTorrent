@@ -24,11 +24,11 @@ public class SingleTorrentClient {
             new Thread(torrentEngine).start();
 
         } catch (FileNotFoundException e) {
-            e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+
         } catch (InvalidBEncodingException e) {
-            e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+
         } catch (IOException e) {
-            e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+
         }
 
     }

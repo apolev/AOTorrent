@@ -5,8 +5,9 @@ import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import org.aotorrent.common.Piece;
 import org.aotorrent.common.Torrent;
+import org.aotorrent.common.connection.AbstractTrackerConnection;
+import org.aotorrent.common.connection.HTTPTrackerConnection;
 import org.aotorrent.common.connection.PeerConnection;
-import org.aotorrent.common.connection.TrackerConnection;
 import org.aotorrent.common.connection.events.SendHaveMessage;
 import org.aotorrent.common.connection.events.StopMessage;
 import org.jetbrains.annotations.NotNull;
@@ -30,7 +31,7 @@ public class TorrentEngine implements Runnable {
 
     private static final int DEFAULT_PORT = 6968;
 
-    private Set<TrackerConnection> trackerConnections = Sets.newLinkedHashSet();
+    private Set<AbstractTrackerConnection> trackerConnections = Sets.newLinkedHashSet();
     private Map<InetSocketAddress, PeerConnection> peerConnections = Maps.newHashMap();
     private List<Piece> pieces;
     private final Set<Piece> inProgress = Sets.newHashSet();
@@ -52,7 +53,7 @@ public class TorrentEngine implements Runnable {
         peersThreads = Executors.newFixedThreadPool(5);
 
         for (URL trackerUrl : trackers) {
-            TrackerConnection trackerConnection = new TrackerConnection(this, trackerUrl, torrent.getInfoHash(), peerId, ip, port);
+            HTTPTrackerConnection trackerConnection = new HTTPTrackerConnection(this, trackerUrl, torrent.getInfoHash(), peerId, ip, port);
             trackerConnectionThreads.submit(trackerConnection);
             trackerConnections.add(trackerConnection);
         }
@@ -106,7 +107,7 @@ public class TorrentEngine implements Runnable {
                 peerConnection.addIncomingMessage(new StopMessage());
             }
 
-            for (TrackerConnection trackerConnection : trackerConnections) {
+            for (AbstractTrackerConnection trackerConnection : trackerConnections) {
                 trackerConnection.setShutdown(true);
             }
 

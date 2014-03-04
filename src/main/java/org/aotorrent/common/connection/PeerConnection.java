@@ -16,6 +16,7 @@ import org.slf4j.LoggerFactory;
 import java.io.*;
 import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.net.SocketException;
 import java.nio.ByteBuffer;
 import java.util.BitSet;
 import java.util.Set;
@@ -432,6 +433,9 @@ public class PeerConnection implements Runnable {
 
                     setHandshakeDone();
                 }
+
+            } catch (SocketException e) {
+                LOGGER.debug("Connection reset");
             } catch (IOException e) {
                 e.printStackTrace();
             } finally {

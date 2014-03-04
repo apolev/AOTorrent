@@ -1,4 +1,4 @@
-package org.aotorrent.common.protocol;
+package org.aotorrent.common.protocol.tracker;
 
 /**
  * Project: AOTorrent
@@ -12,7 +12,7 @@ import java.net.MalformedURLException;
 import java.net.URISyntaxException;
 import java.net.URL;
 
-public class TrackerRequest {
+public class HTTPTrackerRequest {
     private final URL url;
     private final byte[] infoHash;
     private final byte[] peerId;
@@ -26,7 +26,7 @@ public class TrackerRequest {
     private final int numWant;
     private String trackerId;
 
-    public TrackerRequest(URL url, byte[] infoHash, byte[] peerId, int port, long uploaded, long downloaded, long left, boolean compact, boolean noPeerId, int numWant, String trackerId) {
+    public HTTPTrackerRequest(URL url, byte[] infoHash, byte[] peerId, int port, long uploaded, long downloaded, long left, boolean compact, boolean noPeerId, int numWant, String trackerId) {
         this.url = url;
         this.infoHash = infoHash;
         this.peerId = peerId;

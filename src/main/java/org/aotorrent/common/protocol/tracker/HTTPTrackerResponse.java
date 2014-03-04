@@ -1,4 +1,4 @@
-package org.aotorrent.common.protocol;
+package org.aotorrent.common.protocol.tracker;
 
 import com.google.common.collect.Sets;
 import org.aotorrent.common.bencode.BEncodeParser;
@@ -20,7 +20,7 @@ import java.util.Set;
  * User:    dmitry
  * Date:    11/8/13
  */
-public class TrackerResponse {
+public class HTTPTrackerResponse {
 
 
     private static final int SECOND_BYTE = 0x0000ff00;
@@ -47,7 +47,7 @@ public class TrackerResponse {
     //    peers: (binary model) Instead of using the dictionary model described above, the peers value may be a string consisting of multiples of 6 bytes. First 4 bytes are the IP address and last 2 bytes are the port number. All in network (big endian) notation.
 
 
-    public TrackerResponse(InputStream data) throws IOException, InvalidBEncodingException, UnknownHostException, UnsupportedEncodingException {
+    public HTTPTrackerResponse(InputStream data) throws IOException, InvalidBEncodingException, UnknownHostException, UnsupportedEncodingException {
         Map<String, BEncodeValue> responseMap = BEncodeParser.parse(data);
         if (!responseMap.containsKey("failure reason")) {
             failureReason = null;
