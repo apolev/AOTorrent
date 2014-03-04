@@ -30,7 +30,7 @@ public class RequestRequest implements PeerRequest {
     public byte[] toTransmit() throws IOException {
         ByteBuffer bb = ByteBuffer.allocate(Ints.BYTES * 4 + 1);
 
-        bb.putInt((Byte.SIZE + 3 * Integer.SIZE) / Byte.SIZE);
+        bb.putInt(Ints.BYTES * 3 + 1);
         bb.put((byte) RequestType.REQUEST.getRequestCode());
         bb.putInt(index);
         bb.putInt(begin);
