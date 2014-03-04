@@ -4,6 +4,7 @@ import com.google.common.collect.Lists;
 import org.aotorrent.common.TorrentFile;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
@@ -61,60 +62,60 @@ public class FileStorage {
         this.path = path;
     }
 
-    public void store(int pieceIndex, ByteBuffer byteBuffer) throws IOException {
+    public void store(int pieceIndex, ByteBuffer byteBuffer) throws IOException, FileNotFoundException {
         List<StorageFilesInfo> storageFiles = getAffectedFiles(pieceIndex);
 
         for (StorageFilesInfo storageFile : storageFiles) {
 
             ByteBuffer buf = ByteBuffer.wrap(byteBuffer.array(), (int) storageFile.getPieceOffset(), (int) storageFile.getLength());
 
-            FileChannel fileChannel = null;
-
+            final RandomAccessFile randomAccessFile = new RandomAccessFile(storageFile.getFile().getCanonicalPath(), "rw");
             try {
-                fileChannel = new RandomAccessFile(storageFile.getFile().getCanonicalPath(), "rw").getChannel();
-
-                fileChannel.position(storageFile.getFileOffset());
-
-                fileChannel.write(buf);
-
-            } finally {
-                if (fileChannel != null) {
-                    fileChannel.close();
+                FileChannel fileChannel = randomAccessFile.getChannel();
+                try {
+                    fileChannel.position(storageFile.getFileOffset());
+                    fileChannel.write(buf);
+                } finally {
+                    if (fileChannel != null) {
+                        fileChannel.close();
+                    }
                 }
+            } finally {
+                randomAccessFile.close();
             }
 
         }
     }
 
-    public byte[] read(int pieceIndex, int offset, int length) throws IOException {
+    public byte[] read(int pieceIndex, int offset, int length) throws IOException, FileNotFoundException {
+
         List<StorageFilesInfo> storageFiles = getAffectedFiles(pieceIndex);
-
         int index = 0;
-
         ByteBuffer buf = ByteBuffer.allocate(length);
-        FileChannel fileChannel = null;
 
-        try {
-            for (StorageFilesInfo storageFile : storageFiles) {
+        for (StorageFilesInfo storageFile : storageFiles) {
 
-                if (storageFile.getLength() < (offset - index)) {
-                    index += storageFile.getLength();
-                } else if (index > offset && index < (offset + length)) {
-                    fileChannel = new RandomAccessFile(path.getCanonicalPath() + "\\" + storageFile.getFile().getCanonicalPath(), "rw").getChannel();
+            if (storageFile.getLength() < (offset - index)) {
+                index += storageFile.getLength();
+            } else if (index > offset && index < (offset + length)) {
 
-
-                    fileChannel.position(offset - index);
-                    int actuallyRead = fileChannel.read(buf, (offset + length - index));
-                    index += actuallyRead;
+                final RandomAccessFile randomAccessFile = new RandomAccessFile(path.getCanonicalPath() + '\\' + storageFile.getFile().getCanonicalPath(), "rw");
+                try {
+                    FileChannel fileChannel = randomAccessFile.getChannel();
+                    try {
+                        fileChannel.position(offset - index);
+                        int actuallyRead = fileChannel.read(buf, (offset + length - index));
+                        index += actuallyRead;
+                    } finally {
+                        if (fileChannel != null) {
+                            fileChannel.close();
+                        }
+                    }
+                } finally {
+                    randomAccessFile.close();
                 }
-
-            }
-        } finally {
-            if (fileChannel != null) {
-                fileChannel.close();
             }
         }
-
         return buf.array();
     }
 

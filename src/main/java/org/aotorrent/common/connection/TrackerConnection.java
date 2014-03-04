@@ -4,6 +4,8 @@ import org.aotorrent.client.TorrentEngine;
 import org.aotorrent.common.bencode.InvalidBEncodingException;
 import org.aotorrent.common.protocol.TrackerRequest;
 import org.aotorrent.common.protocol.TrackerResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.BufferedInputStream;
 import java.io.IOException;
@@ -18,6 +20,7 @@ import java.util.Set;
  * Date:    11/8/13
  */
 public class TrackerConnection implements Runnable {
+    private static final Logger LOGGER = LoggerFactory.getLogger(TrackerConnection.class);
     private final TorrentEngine torrentEngine;
     private URL url;
     private final byte[] infoHash;
@@ -93,7 +96,7 @@ public class TrackerConnection implements Runnable {
                 nextRequest = new Date(System.currentTimeMillis() + (300 * 1000));
             }
         } catch (URISyntaxException e) {
-            e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+            LOGGER.error("URI syntax error", e);
         } finally {
             if (connection != null) {
                 connection.disconnect();
@@ -104,4 +107,6 @@ public class TrackerConnection implements Runnable {
     public Date getNextRequest() {
         return nextRequest;
     }
+
+
 }

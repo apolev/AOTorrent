@@ -2,16 +2,16 @@ package org.aotorrent.common;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
-import com.sun.istack.internal.NotNull;
-import com.sun.istack.internal.Nullable;
+import org.aotorrent.common.bencode.BEncodeParser;
+import org.aotorrent.common.bencode.BEncodeValue;
+import org.aotorrent.common.bencode.BEncodeWriter;
 import org.aotorrent.common.bencode.InvalidBEncodingException;
-import org.aotorrent.common.bencode.Parser;
-import org.aotorrent.common.bencode.Value;
-import org.aotorrent.common.bencode.Writer;
-import org.aotorrent.common.hash.Hasher;
+import org.aotorrent.common.hash.StaticHashMaker;
 import org.aotorrent.common.storage.FileStorage;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang.StringUtils;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -79,7 +79,7 @@ public class Torrent {
         }
 
         this.size = allFilesSize;
-        this.pieces = Hasher.getPieces(files, 0, pieceLength);
+        this.pieces = StaticHashMaker.getPieces(files, 0, pieceLength);
 
         this.files = torrentFiles;
 
@@ -91,12 +91,12 @@ public class Torrent {
 
     public Torrent(@NotNull final InputStream is, String downloadPath) throws IOException, InvalidBEncodingException {
         this.downloadPath = downloadPath;
-        Map<String, Value> parsed = Parser.parse(is);
+        Map<String, BEncodeValue> parsed = BEncodeParser.parse(is);
         String announceURL = parsed.get("announce").getString();
         announce = Lists.<List<String>>newArrayList(Lists.newArrayList(announceURL));
         comment = String.valueOf(parsed.get("comment"));
         createdBy = String.valueOf(parsed.get("created by"));
-        Map<String, Value> info = parsed.get("info").getMap();
+        Map<String, BEncodeValue> info = parsed.get("info").getMap();
         root = new File(info.get("name").getString());
         pieces = info.get("pieces").getString();
         pieceLength = (int) info.get("piece length").getLong();
@@ -105,8 +105,8 @@ public class Torrent {
         long allFilesSize = 0;
 
         if (info.get("files") != null) {
-            for (Value file : info.get("files").getList()) {
-                Map<String, Value> valueMap = file.getMap();
+            for (BEncodeValue file : info.get("files").getList()) {
+                Map<String, BEncodeValue> valueMap = file.getMap();
 
                 TorrentFile tf = new TorrentFile(
                         downloadPath + StringUtils.join(valueMap.get("path").getList(), '\\'),
@@ -133,55 +133,55 @@ public class Torrent {
         this.fileStorage = new FileStorage(files, pieceLength, new File("."));
     }
 
-    public void save(OutputStream outputStream) throws IOException, InvalidBEncodingException {
-        Map<String, Value> torrentMap = Maps.newHashMap();
-        torrentMap.put("announce", new Value(announce.get(0).get(0)));
+    public void save(OutputStream outputStream) throws IOException, InvalidBEncodingException, UnsupportedEncodingException {
+        Map<String, BEncodeValue> torrentMap = Maps.newHashMap();
+        torrentMap.put("announce", new BEncodeValue(announce.get(0).get(0)));
         //TODO announceList
-        torrentMap.put("comment", new Value(comment));
-        torrentMap.put("creation date", new Value(creationDate.getTime() / 1000));
-        torrentMap.put("created by", new Value(createdBy));
+        torrentMap.put("comment", new BEncodeValue(comment));
+        torrentMap.put("creation date", new BEncodeValue(creationDate.getTime() / 1000));
+        torrentMap.put("created by", new BEncodeValue(createdBy));
 
 
         if (singleFile) {
             //TODO
         } else {
-            Map<String, Value> info = generateInfo();
-            torrentMap.put("info", new Value(info));
+            Map<String, BEncodeValue> info = generateInfo();
+            torrentMap.put("info", new BEncodeValue(info));
         }
 
-        Writer.writeOut(outputStream, torrentMap);
+        BEncodeWriter.writeOut(outputStream, torrentMap);
     }
 
-    private Map<String, Value> generateInfo() {
-        Map<String, Value> info = Maps.newHashMap();
+    private Map<String, BEncodeValue> generateInfo() {
+        Map<String, BEncodeValue> info = Maps.newHashMap();
         String name = (root != null) ? root.getName() : files.get(0).getPath();  //TODO proper name creation
-        info.put("name", new Value(name));
-        info.put("piece length", new Value(DEFAULT_PIECE_LENGTH));
+        info.put("name", new BEncodeValue(name));
+        info.put("piece length", new BEncodeValue(DEFAULT_PIECE_LENGTH));
 
-        info.put("pieces", new Value(pieces));
+        info.put("pieces", new BEncodeValue(pieces));
 
-        List<Value> filesList = Lists.newArrayList();
+        List<BEncodeValue> filesList = Lists.newArrayList();
 
         for (TorrentFile file : files) {
-            Map<String, Value> fileInfo = Maps.newHashMap();
+            Map<String, BEncodeValue> fileInfo = Maps.newHashMap();
 
-            fileInfo.put("length", new Value(file.getLength()));
-            fileInfo.put("md5sum", new Value(file.getMd5sum()));
-            List<String> splittedPath = Arrays.asList(file.getPath().split("/"));
-            List<Value> splittedPathValue = Lists.newArrayList();
-            for (String pieceOfPath : splittedPath) {
-                splittedPathValue.add(new Value(pieceOfPath));
+            fileInfo.put("length", new BEncodeValue(file.getLength()));
+            fileInfo.put("md5sum", new BEncodeValue(file.getMd5sum()));
+            List<String> pathElements = Arrays.asList(file.getPath().split("/"));
+            List<BEncodeValue> pathElementsValue = Lists.newArrayList();
+            for (String pieceOfPath : pathElements) {
+                pathElementsValue.add(new BEncodeValue(pieceOfPath));
             }
-            fileInfo.put("path", new Value(splittedPathValue));
+            fileInfo.put("path", new BEncodeValue(pathElementsValue));
 
-            filesList.add(new Value(fileInfo));
+            filesList.add(new BEncodeValue(fileInfo));
         }
-        info.put("files", new Value(filesList));
+        info.put("files", new BEncodeValue(filesList));
         return info;
     }
 
     private byte[] craftInfoHash() throws IOException, InvalidBEncodingException {
-        Map<String, Value> info = generateInfo();
+        Map<String, BEncodeValue> info = generateInfo();
 
         return getHash(info);
     }
@@ -204,11 +204,11 @@ public class Torrent {
         return trackerUrls;
     }
 
-    private byte[] getHash(Map<String, Value> info) throws IOException, InvalidBEncodingException {
+    private byte[] getHash(Map<String, BEncodeValue> info) throws IOException, InvalidBEncodingException, UnsupportedEncodingException {
 
         ByteArrayOutputStream os = new ByteArrayOutputStream();
 
-        Writer.writeOut(os, info);
+        BEncodeWriter.writeOut(os, info);
 
         return DigestUtils.sha1(os.toByteArray());
     }

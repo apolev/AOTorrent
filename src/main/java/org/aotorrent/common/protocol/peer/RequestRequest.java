@@ -26,10 +26,10 @@ public class RequestRequest implements PeerRequest {
 
     @Override
     public byte[] toTransmit() throws IOException {
-        ByteBuffer bb = ByteBuffer.allocate(4 + 1 + 12);
+        ByteBuffer bb = ByteBuffer.allocate((Integer.SIZE + Byte.SIZE + 3 * Integer.SIZE) / Byte.SIZE);
 
-        bb.putInt(13);
-        bb.put((byte) RequestType.REQUEST.requestCode);
+        bb.putInt((Byte.SIZE + 3 * Integer.SIZE) / Byte.SIZE);
+        bb.put((byte) RequestType.REQUEST.getRequestCode());
         bb.putInt(index);
         bb.putInt(begin);
         bb.putInt(length);

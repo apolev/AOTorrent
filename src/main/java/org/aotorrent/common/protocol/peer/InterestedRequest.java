@@ -12,7 +12,7 @@ public class InterestedRequest implements PeerRequest {
         ByteBuffer bb = ByteBuffer.allocate(4 + 1);
 
         bb.putInt(1);
-        bb.put((byte) RequestType.INTERESTED.requestCode);
+        bb.put((byte) RequestType.INTERESTED.getRequestCode());
 
         return bb.array();
     }

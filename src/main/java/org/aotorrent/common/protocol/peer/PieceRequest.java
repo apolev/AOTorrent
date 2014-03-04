@@ -32,7 +32,7 @@ public class PieceRequest implements PeerRequest {
         ByteBuffer bb = ByteBuffer.allocate(4 + 1 + 4 + 4 + block.length);
 
         bb.putInt(1 + 4 + 4 + block.length);
-        bb.put((byte) RequestType.PIECE.requestCode);
+        bb.put((byte) RequestType.PIECE.getRequestCode());
         bb.putInt(index);
         bb.putInt(begin);
         bb.put(block);

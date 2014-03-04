@@ -63,9 +63,7 @@ public class TorrentEngine implements Runnable {
             peers.removeAll(peerConnections.keySet());
 
             for (InetSocketAddress peer : peers) {
-                PeerConnection peerConnection = null;
-
-                peerConnection = new PeerConnection(peer, this);
+                PeerConnection peerConnection = new PeerConnection(peer, this);
                 peerConnections.put(peer, peerConnection);
                 peersThreads.submit(peerConnection);
             }
@@ -108,10 +106,6 @@ public class TorrentEngine implements Runnable {
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
-    }
-
-    public Torrent getTorrent() {
-        return torrent;
     }
 
     public byte[] getPeerId() {
@@ -158,7 +152,6 @@ public class TorrentEngine implements Runnable {
             if (!currentBitField.get(i) && bitField.get(i)) {
                 return true;
             }
-
         }
 
         return false;
@@ -176,7 +169,7 @@ public class TorrentEngine implements Runnable {
 
     }
 
-    public void setPieceDone(Piece piece) {
+    public void setPieceDone(@NotNull Piece piece) {
         synchronized (inProgress) {
             inProgress.remove(piece);
         }
@@ -185,9 +178,15 @@ public class TorrentEngine implements Runnable {
         }
     }
 
-    public void setPieceDone(Set<Piece> pieces) {
-        synchronized (inProgress) {
-            inProgress.removeAll(pieces);
+    public void setPieceDone(@NotNull Collection<Piece> pieces) {
+        if (!pieces.isEmpty()) {
+            synchronized (inProgress) {
+                inProgress.removeAll(pieces);
+            }
         }
+    }
+
+    public byte[] getInfoHash() {
+        return torrent.getInfoHash();
     }
 }

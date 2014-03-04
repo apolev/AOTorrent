@@ -11,7 +11,7 @@ public class ChokeRequest implements PeerRequest {
         ByteBuffer bb = ByteBuffer.allocate(4 + 1);
 
         bb.putInt(1);
-        bb.put((byte) RequestType.CHOKE.requestCode);
+        bb.put((byte) RequestType.CHOKE.getRequestCode());
 
         return bb.array();
     }

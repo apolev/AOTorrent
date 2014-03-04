@@ -12,7 +12,7 @@ public class NotInterestedRequest implements PeerRequest {
         ByteBuffer bb = ByteBuffer.allocate(4 + 1);
 
         bb.putInt(1);
-        bb.put((byte) RequestType.NOT_INTERESTED.requestCode);
+        bb.put((byte) RequestType.NOT_INTERESTED.getRequestCode());
 
         return bb.array();
     }

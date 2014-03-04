@@ -26,7 +26,7 @@ public class HaveRequest implements PeerRequest {
         ByteBuffer bb = ByteBuffer.allocate(4 + 1 + 4);
 
         bb.putInt(5);
-        bb.put((byte) RequestType.HAVE.requestCode);
+        bb.put((byte) RequestType.HAVE.getRequestCode());
         bb.putInt(index);
 
         return bb.array();

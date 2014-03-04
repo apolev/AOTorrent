@@ -30,7 +30,7 @@ public class BitFieldRequest implements PeerRequest {
         int messageSize = (size + 7) / 8 + 1;
         final ByteBuffer byteBuffer = ByteBuffer.allocate(4 + messageSize).putInt(messageSize);
 
-        byteBuffer.put((byte) RequestType.BIT_FIELD.requestCode);
+        byteBuffer.put((byte) RequestType.BIT_FIELD.getRequestCode());
 
         byte[] buffer = new byte[messageSize - 1];
         for (int i = 0; i < size; i++) {
