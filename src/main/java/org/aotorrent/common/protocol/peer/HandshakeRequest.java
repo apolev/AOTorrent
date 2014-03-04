@@ -50,7 +50,7 @@ public class HandshakeRequest implements PeerRequest {
     }
 
     @Override
-    public byte[] toTransmit() throws IOException {
+    public byte[] toTransmit() throws IOException, UnsupportedEncodingException {
         ByteArrayOutputStream os = new ByteArrayOutputStream();
         os.write(protocolString.length());
         os.write(protocolString.getBytes(Torrent.DEFAULT_TORRENT_ENCODING));
@@ -61,33 +61,12 @@ public class HandshakeRequest implements PeerRequest {
         return os.toByteArray();
     }
 
-    public static int getByteMax() {
-        return BYTE_MAX;
-    }
-
     public byte[] getInfoHash() {
         return infoHash;
     }
 
-    public byte[] getPeerId() {
-        return peerId;
-    }
-
-    public String getProtocolString() {
-        return protocolString;
-    }
-
-    public byte[] getReserved() {
-        return reserved;
-    }
-
-    public boolean isOk(Torrent torrent) {
-
-        if (!Arrays.equals(infoHash, torrent.getInfoHash())) {
-            return false;
-        }
-
-        return true;
+    public boolean isOk(byte[] infoHash) {
+        return Arrays.equals(this.getInfoHash(), infoHash);
     }
 
     @Override

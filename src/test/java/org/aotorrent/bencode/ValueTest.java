@@ -1,8 +1,8 @@
 package org.aotorrent.bencode;
 
 import com.google.common.collect.Maps;
+import org.aotorrent.common.bencode.BEncodeValue;
 import org.aotorrent.common.bencode.InvalidBEncodingException;
-import org.aotorrent.common.bencode.Value;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
@@ -25,7 +25,7 @@ public class ValueTest {
     @Test
     public void testLongValue() throws InvalidBEncodingException {
         long testValue = Long.MAX_VALUE;
-        Value value = new Value(testValue);
+        BEncodeValue value = new BEncodeValue(testValue);
 
         org.junit.Assert.assertEquals(value, testValue);
     }
@@ -33,36 +33,36 @@ public class ValueTest {
     @Test
     public void testStringValue() throws InvalidBEncodingException {
         String stringValue = "Test string";
-        Value value = new Value(stringValue);
+        BEncodeValue value = new BEncodeValue(stringValue);
 
         org.junit.Assert.assertEquals(value, stringValue);
     }
 
     @Test
     public void testListValue() throws InvalidBEncodingException {
-        List<Value> listValue = Arrays.asList(new Value(1), new Value(2), new Value("String"));
-        Value value = new Value(listValue);
+        List<BEncodeValue> listValue = Arrays.asList(new BEncodeValue(1), new BEncodeValue(2), new BEncodeValue("String"));
+        BEncodeValue value = new BEncodeValue(listValue);
 
         org.junit.Assert.assertEquals(value, listValue);
     }
 
     @Test
     public void testMapValue() throws InvalidBEncodingException {
-        Map<String, Value> mapValue = Maps.newHashMap();
-        List<Value> listValue = Arrays.asList(new Value(1), new Value(2), new Value("String"));
+        Map<String, BEncodeValue> mapValue = Maps.newHashMap();
+        List<BEncodeValue> listValue = Arrays.asList(new BEncodeValue(1), new BEncodeValue(2), new BEncodeValue("String"));
 
-        mapValue.put("1", new Value(1));
-        mapValue.put("2", new Value("2"));
-        mapValue.put("3", new Value(listValue));
+        mapValue.put("1", new BEncodeValue(1));
+        mapValue.put("2", new BEncodeValue("2"));
+        mapValue.put("3", new BEncodeValue(listValue));
 
-        Value value = new Value(mapValue);
+        BEncodeValue value = new BEncodeValue(mapValue);
 
         org.junit.Assert.assertEquals(value, mapValue);
     }
 
     @Test
     public void testNullValue() {
-        Value value = new Value(null);
+        BEncodeValue value = new BEncodeValue(null);
 
         org.junit.Assert.assertNull(value.getValue());
         org.junit.Assert.assertNull(value.getValueClass());
@@ -70,7 +70,7 @@ public class ValueTest {
 
     @Test
     public void testInvalidType() throws InvalidBEncodingException {
-        Value value = new Value("String value");
+        BEncodeValue value = new BEncodeValue("String value");
 
         exception.expect(InvalidBEncodingException.class);
 

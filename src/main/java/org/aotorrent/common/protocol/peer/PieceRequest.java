@@ -1,5 +1,7 @@
 package org.aotorrent.common.protocol.peer;
 
+import com.google.common.primitives.Ints;
+
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
@@ -29,10 +31,10 @@ public class PieceRequest implements PeerRequest {
 
     @Override
     public byte[] toTransmit() throws IOException {
-        ByteBuffer bb = ByteBuffer.allocate(4 + 1 + 4 + 4 + block.length);
+        ByteBuffer bb = ByteBuffer.allocate(Ints.BYTES * 3 + 1 + block.length);
 
-        bb.putInt(1 + 4 + 4 + block.length);
-        bb.put((byte) RequestType.PIECE.requestCode);
+        bb.putInt(Ints.BYTES * 2 + 1 + block.length);
+        bb.put((byte) RequestType.PIECE.getRequestCode());
         bb.putInt(index);
         bb.putInt(begin);
         bb.put(block);

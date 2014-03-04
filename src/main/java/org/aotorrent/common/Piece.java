@@ -2,7 +2,10 @@ package org.aotorrent.common;
 
 import org.aotorrent.common.storage.FileStorage;
 import org.apache.commons.codec.digest.DigestUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
@@ -14,8 +17,8 @@ import java.util.BitSet;
  * Date:    11/8/13
  */
 public class Piece implements Comparable<Piece> {
-
-    public static int DEFAULT_BLOCK_LENGTH = 16384;
+    private static final Logger LOGGER = LoggerFactory.getLogger(Piece.class);
+    public static final int DEFAULT_BLOCK_LENGTH = 16384;
     public static final int PIECE_HASH_LENGTH = 20;
 
     private final int index;
@@ -69,25 +72,27 @@ public class Piece implements Comparable<Piece> {
         checkIsComplete();
     }
 
-    public byte[] read(int offset, int length) throws IOException {
+    public byte[] read(int offset, int length) throws IOException, FileNotFoundException {
         return storage.read(index, offset, length);
     }
 
     private void checkIsComplete() { //TODO make this in separate thread
-        if (isAllBlocksComplete()) {
-            byte[] pieceHash = DigestUtils.sha1(buffer.array());
+        try {
+            if (isAllBlocksComplete()) {
+                byte[] pieceHash = DigestUtils.sha1(buffer.array());
 
-            if (Arrays.equals(pieceHash, hash)) {
-                try {
+                if (Arrays.equals(pieceHash, hash)) {
                     storage.store(index, buffer);
                     complete = true;
-                } catch (IOException e) {
-                    e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+                } else {
+                    blockComplete.clear();
                 }
-            } else {
-                blockComplete.clear();
+                buffer = null;
             }
-            buffer = null;
+        } catch (FileNotFoundException e) {
+            LOGGER.error("Can't save piece", e);
+        } catch (IOException e) {
+            LOGGER.error("Can't save piece", e);
         }
     }
 
@@ -99,10 +104,6 @@ public class Piece implements Comparable<Piece> {
         return peerCount;
     }
 
-    public void increasePeerCount() {
-        this.peerCount++;
-    }
-
     public boolean isComplete() {
         return complete;
     }
@@ -110,10 +111,10 @@ public class Piece implements Comparable<Piece> {
     @Override
     public int compareTo(Piece otherPiece) {
         if (isComplete() == otherPiece.isComplete()) {
-            if (peerCount == otherPiece.peerCount) {
-                return Arrays.hashCode(hash) - Arrays.hashCode(otherPiece.hash);
+            if (peerCount == otherPiece.getPeerCount()) {
+                return Arrays.hashCode(hash) - Arrays.hashCode(otherPiece.getHash());
             }
-            return peerCount - otherPiece.peerCount;
+            return peerCount - otherPiece.getPeerCount();
         } else {
             if (isComplete()) {
                 return 1;
@@ -123,17 +124,8 @@ public class Piece implements Comparable<Piece> {
         }
     }
 
-    public int getNextEmptyBlockIndex() {
-        final int clearBit = blockComplete.nextClearBit(0);
-        return (clearBit <= getBlockCount()) ? clearBit : -1;
-    }
-
     public int getBlockCount() {
         return (pieceLength / DEFAULT_BLOCK_LENGTH);
-    }
-
-    public boolean isClear() {
-        return blockComplete.isEmpty();
     }
 
     public int getIndex() {
@@ -142,16 +134,22 @@ public class Piece implements Comparable<Piece> {
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
 
         Piece piece = (Piece) o;
 
-        if (index != piece.index) return false;
-        if (pieceLength != piece.pieceLength) return false;
-        if (!Arrays.equals(hash, piece.hash)) return false;
-
-        return true;
+        if (index != piece.getIndex()) {
+            return false;
+        }
+        if (pieceLength != piece.getPieceLength()) {
+            return false;
+        }
+        return Arrays.equals(hash, piece.getHash());
     }
 
     @Override
@@ -160,5 +158,13 @@ public class Piece implements Comparable<Piece> {
         result = 31 * result + pieceLength;
         result = 31 * result + Arrays.hashCode(hash);
         return result;
+    }
+
+    public byte[] getHash() {
+        return hash;
+    }
+
+    public int getPieceLength() {
+        return pieceLength;
     }
 }

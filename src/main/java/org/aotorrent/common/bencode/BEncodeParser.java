@@ -1,6 +1,7 @@
 package org.aotorrent.common.bencode;
 
 import com.google.common.collect.Maps;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -13,55 +14,59 @@ import java.util.Map;
  * User:    dmitry
  * Date:    11/5/13
  */
-public class Parser {
+public class BEncodeParser {
 
     private final InputStream is;
 
-    public Parser(InputStream is) {
+    public BEncodeParser(InputStream is) {
         this.is = is;
     }
 
-    public List<Value> parse() throws IOException, InvalidBEncodingException {
-        List<Value> result = new ArrayList<Value>();
+    public List<BEncodeValue> parse() throws IOException, InvalidBEncodingException {
+        List<BEncodeValue> result = new ArrayList<BEncodeValue>();
 
-        Value temporary;
+        BEncodeValue temporary = getNext();
 
-        while ((temporary = getNext()) != null) {
+        while (temporary != null) {
             result.add(temporary);
+            temporary = getNext();
         }
 
         return result;
     }
 
-    public Map<String, Value> parseMap() throws IOException, InvalidBEncodingException {
+    public Map<String, BEncodeValue> parseMap() throws IOException, InvalidBEncodingException {
         return decodeMap().getMap();
     }
 
-    public Value parseOne() throws IOException, InvalidBEncodingException {
+    @Nullable
+    public BEncodeValue parseOne() throws IOException, InvalidBEncodingException {
         return getNext();
     }
 
-    private Value getNext() throws InvalidBEncodingException, IOException {
+    @Nullable
+    private BEncodeValue getNext() throws InvalidBEncodingException, IOException {
         int typeToken = getNextType();
 
         if ((typeToken == -1) || typeToken == 'e') {
             return null;
         }
 
-        if (Character.isDigit(typeToken))
+        if (Character.isDigit(typeToken)) {
             return decodeString();
-        else if (typeToken == 'i')
+        } else if (typeToken == 'i') {
             return decodeNumber();
-        else if (typeToken == 'l')
+        } else if (typeToken == 'l') {
             return decodeList();
-        else if (typeToken == 'd')
+        } else if (typeToken == 'd') {
             return decodeMap();
-        else
-            throw new InvalidBEncodingException
-                    ("Unknown type '" + typeToken + "'");
+        } else {
+            throw new InvalidBEncodingException("Unknown type '" + typeToken + '\'');
+        }
     }
 
-    private Value decodeString() throws InvalidBEncodingException, IOException {
+    @Nullable
+    private BEncodeValue decodeString() throws InvalidBEncodingException, IOException {
 
         int length = getStringLength();
 
@@ -76,10 +81,10 @@ public class Parser {
             stringBuilder.append(Character.toChars(oneByte)[0]);
         }
 
-        return new Value(stringBuilder.toString());
+        return new BEncodeValue(stringBuilder.toString());
     }
 
-    private Value decodeNumber() throws IOException, InvalidBEncodingException {
+    private BEncodeValue decodeNumber() throws IOException, InvalidBEncodingException {
         int iLetter = is.read();
 
         if (iLetter != 'i') {
@@ -101,30 +106,33 @@ public class Parser {
         }
 
         // rest characters
-        while (Character.isDigit(got = is.read())) {
+        got = is.read();
+        while (Character.isDigit(got)) {
             number = number * 10 + Character.digit(got, 10);
+            got = is.read();
         }
 
         if (negative) {
-            return new Value(number * (-1));
+            return new BEncodeValue(number * (-1));
         }
 
-        return new Value(number);
+        return new BEncodeValue(number);
     }
 
-    private Value decodeList() throws IOException, InvalidBEncodingException {
+    private BEncodeValue decodeList() throws IOException, InvalidBEncodingException {
         int iLetter = is.read();
 
         if (iLetter != 'l') {
             throw new InvalidBEncodingException("Invalid byte sequence: " + (char) iLetter);
         }
 
-        Value value;
+        List<BEncodeValue> result = new ArrayList<BEncodeValue>();
 
-        List<Value> result = new ArrayList<Value>();
+        BEncodeValue value = getNext();
 
-        while ((value = getNext()) != null) {
+        while (value != null) {
             result.add(value);
+            value = getNext();
         }
 
         iLetter = is.read();
@@ -133,22 +141,23 @@ public class Parser {
             throw new InvalidBEncodingException("Invalid byte sequence: " + (char) iLetter);
         }
 
-        return new Value(result);
+        return new BEncodeValue(result);
     }
 
-    private Value decodeMap() throws InvalidBEncodingException, IOException {
+    private BEncodeValue decodeMap() throws InvalidBEncodingException, IOException {
         int iLetter = is.read();
 
         if (iLetter != 'd') {
             throw new InvalidBEncodingException("Invalid byte sequence: " + (char) iLetter);
         }
 
-        Map<String, Value> result = Maps.newLinkedHashMap();
+        Map<String, BEncodeValue> result = Maps.newLinkedHashMap();
 
-        Value key;
-        while ((key = decodeString()) != null) {
-            Value value = getNext();
+        BEncodeValue key = decodeString();
+        while (key != null) {
+            BEncodeValue value = getNext();
             result.put(key.getString(), value);
+            key = decodeString();
         }
 
         iLetter = is.read();
@@ -157,7 +166,7 @@ public class Parser {
             throw new InvalidBEncodingException("Invalid byte sequence: " + (char) iLetter);
         }
 
-        return new Value(result);
+        return new BEncodeValue(result);
 
     }
 
@@ -181,10 +190,11 @@ public class Parser {
             throw new InvalidBEncodingException("Length expected but " + length + "found");
         }
 
-        int next;
+        int next = is.read();
 
-        while (((next = is.read()) != ':') && (next != -1)) {
+        while ((next != ':') && (next != -1)) {
             length = length * 10 + Character.digit(next, 10);
+            next = is.read();
         }
 
         if (next == -1) {
@@ -194,13 +204,14 @@ public class Parser {
         return length;
     }
 
-    public static Map<String, Value> parse(InputStream is) throws IOException, InvalidBEncodingException {
-        Parser parser = new Parser(is);
+    public static Map<String, BEncodeValue> parse(InputStream is) throws IOException, InvalidBEncodingException {
+        BEncodeParser parser = new BEncodeParser(is);
         return parser.parseMap();
     }
 
-    public static Value parseOne(InputStream is) throws IOException, InvalidBEncodingException {
-        Parser parser = new Parser(is);
+    @Nullable
+    public static BEncodeValue parseOne(InputStream is) throws IOException, InvalidBEncodingException {
+        BEncodeParser parser = new BEncodeParser(is);
         return parser.parseOne();
     }
 }

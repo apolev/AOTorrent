@@ -1,5 +1,7 @@
 package org.aotorrent.common.protocol.peer;
 
+import com.google.common.primitives.Ints;
+
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.BitSet;
@@ -28,9 +30,9 @@ public class BitFieldRequest implements PeerRequest {
     @Override
     public byte[] toTransmit() throws IOException {
         int messageSize = (size + 7) / 8 + 1;
-        final ByteBuffer byteBuffer = ByteBuffer.allocate(4 + messageSize).putInt(messageSize);
+        final ByteBuffer byteBuffer = ByteBuffer.allocate(Ints.BYTES + messageSize).putInt(messageSize);
 
-        byteBuffer.put((byte) RequestType.BIT_FIELD.requestCode);
+        byteBuffer.put((byte) RequestType.BIT_FIELD.getRequestCode());
 
         byte[] buffer = new byte[messageSize - 1];
         for (int i = 0; i < size; i++) {

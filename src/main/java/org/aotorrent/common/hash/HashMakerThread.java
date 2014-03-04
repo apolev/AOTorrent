@@ -10,12 +10,12 @@ import java.util.concurrent.Semaphore;
  * Date: 1/28/14
  * Time: 4:18 PM
  */
-public class HasherThread implements Callable<byte[]> {
+public class HashMakerThread implements Callable<byte[]> {
 
     private final byte[] data;
     private final Semaphore semaphore;
 
-    public HasherThread(byte[] data, Semaphore semaphore) {
+    public HashMakerThread(byte[] data, Semaphore semaphore) {
         this.data = data;
         this.semaphore = semaphore;
     }
@@ -23,8 +23,7 @@ public class HasherThread implements Callable<byte[]> {
     @Override
     public byte[] call() throws Exception {
         try {
-            final byte[] bytes = DigestUtils.sha1(data);
-            return bytes;
+            return DigestUtils.sha1(data);
         } finally {
             semaphore.release();
         }

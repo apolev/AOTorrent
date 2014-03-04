@@ -12,21 +12,26 @@ import java.util.Map;
 public enum RequestType {
     KEEP_ALIVE(-1), CHOKE(0), UNCHOKE(1), INTERESTED(2), NOT_INTERESTED(3), HAVE(4), BIT_FIELD(5), REQUEST(6), PIECE(7), CANCEL(8), PORT(9);
 
-    final int requestCode;
+    private final int requestCode;
 
     RequestType(int i) {
         requestCode = i;
     }
 
+    public int getRequestCode() {
+        return requestCode;
+    }
+
     // Mapping difficulty to difficulty id
-    private static final Map<Integer, RequestType> map = Maps.newHashMap();
+    private static final Map<Integer, RequestType> MAP = Maps.newHashMap();
 
     static {
-        for (RequestType requestType : RequestType.values())
-            map.put(requestType.requestCode, requestType);
+        for (RequestType requestType : RequestType.values()) {
+            MAP.put(requestType.getRequestCode(), requestType);
+        }
     }
 
     public static RequestType from(int requestCode) {
-        return map.get(requestCode);
+        return MAP.get(requestCode);
     }
 }

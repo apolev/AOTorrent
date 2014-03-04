@@ -1,6 +1,6 @@
 package org.aotorrent.common.bencode;
 
-import com.sun.istack.internal.Nullable;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 import java.util.Map;
@@ -10,11 +10,11 @@ import java.util.Map;
  * User:    dmitry
  * Date:    11/6/13
  */
-public class Value {
+public class BEncodeValue {
 
-    Object value;
+    private Object value;
 
-    public Value(Object value) {
+    public BEncodeValue(Object value) {
         if (value instanceof Integer) {
             this.value = ((Integer) value).longValue();
         } else {
@@ -62,17 +62,17 @@ public class Value {
     }
 
     @SuppressWarnings("unchecked")
-    public List<Value> getList() throws InvalidBEncodingException {
+    public List<BEncodeValue> getList() throws InvalidBEncodingException {
         if (value instanceof List) {
-            return (List<Value>) value;
+            return (List<BEncodeValue>) value;
         }
         throw new InvalidBEncodingException("List expected but " + value.getClass().toString() + " found.");
     }
 
     @SuppressWarnings("unchecked")
-    public Map<String, Value> getMap() throws InvalidBEncodingException {
+    public Map<String, BEncodeValue> getMap() throws InvalidBEncodingException {
         if (value instanceof Map) {
-            return (Map<String, Value>) value;
+            return (Map<String, BEncodeValue>) value;
         }
         throw new InvalidBEncodingException("Map expected but " + value.getClass().toString() + " found.");
     }
@@ -83,11 +83,22 @@ public class Value {
     }
 
     @Override
-    public boolean equals(Object value) {
-        if (value instanceof Value) {
-            return this.value.equals(((Value) value).getValue());
-        } else {
-            return this.value.equals(value);
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
         }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+
+        BEncodeValue value1 = (BEncodeValue) o;
+
+        return value.equals(value1.getValue());
+
+    }
+
+    @Override
+    public int hashCode() {
+        return value.hashCode();
     }
 }

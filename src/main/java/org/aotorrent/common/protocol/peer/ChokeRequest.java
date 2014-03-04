@@ -1,5 +1,7 @@
 package org.aotorrent.common.protocol.peer;
 
+import com.google.common.primitives.Ints;
+
 import java.nio.ByteBuffer;
 
 /**
@@ -8,10 +10,10 @@ import java.nio.ByteBuffer;
 public class ChokeRequest implements PeerRequest {
     @Override
     public byte[] toTransmit() {
-        ByteBuffer bb = ByteBuffer.allocate(4 + 1);
+        ByteBuffer bb = ByteBuffer.allocate(Ints.BYTES + 1);
 
         bb.putInt(1);
-        bb.put((byte) RequestType.CHOKE.requestCode);
+        bb.put((byte) RequestType.CHOKE.getRequestCode());
 
         return bb.array();
     }

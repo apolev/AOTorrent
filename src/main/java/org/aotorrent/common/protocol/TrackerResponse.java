@@ -1,14 +1,16 @@
 package org.aotorrent.common.protocol;
 
 import com.google.common.collect.Sets;
+import org.aotorrent.common.bencode.BEncodeParser;
+import org.aotorrent.common.bencode.BEncodeValue;
 import org.aotorrent.common.bencode.InvalidBEncodingException;
-import org.aotorrent.common.bencode.Parser;
-import org.aotorrent.common.bencode.Value;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.UnsupportedEncodingException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.UnknownHostException;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.Set;
@@ -21,6 +23,8 @@ import java.util.Set;
 public class TrackerResponse {
 
 
+    private static final int SECOND_BYTE = 0x0000ff00;
+    private static final int FIRST_BYTE = 0x000000ff;
     //    failure reason: If present, then no other keys may be present. The value is a human-readable error message as to why the request failed (string).
     private final String failureReason;
     //    warning message: (new, optional) Similar to failure reason, but the response still gets processed normally. The warning message is shown just like an error.
@@ -43,8 +47,8 @@ public class TrackerResponse {
     //    peers: (binary model) Instead of using the dictionary model described above, the peers value may be a string consisting of multiples of 6 bytes. First 4 bytes are the IP address and last 2 bytes are the port number. All in network (big endian) notation.
 
 
-    public TrackerResponse(InputStream data) throws IOException, InvalidBEncodingException {
-        Map<String, Value> responseMap = Parser.parse(data);
+    public TrackerResponse(InputStream data) throws IOException, InvalidBEncodingException, UnknownHostException, UnsupportedEncodingException {
+        Map<String, BEncodeValue> responseMap = BEncodeParser.parse(data);
         if (!responseMap.containsKey("failure reason")) {
             failureReason = null;
             warningMessage = (responseMap.containsKey("warning message")) ? responseMap.get("warning message").getString() : null;
@@ -54,7 +58,7 @@ public class TrackerResponse {
             complete = (responseMap.containsKey("complete")) ? (int) responseMap.get("complete").getLong() : 0;
             incomplete = (responseMap.containsKey("incomplete")) ? (int) responseMap.get("incomplete").getLong() : 0;
 
-            if (responseMap.get("peers").getValueClass().equals("String")) {
+            if ("String".equals(responseMap.get("peers").getValueClass())) {
                 byte[] encodedPeers = responseMap.get("peers").getString().getBytes("ISO-8859-1");
 
                 if ((encodedPeers.length % 6) > 0) {
@@ -66,7 +70,7 @@ public class TrackerResponse {
                     InetAddress ip = InetAddress.getByAddress(rawIP);
 
                     byte[] rawPort = Arrays.copyOfRange(encodedPeers, i * 6 + 4, i * 6 + 6);
-                    int port = ((rawPort[0] << 8) & 0x0000ff00) | (rawPort[1] & 0x000000ff);
+                    int port = ((rawPort[0] << 8) & SECOND_BYTE) | (rawPort[1] & FIRST_BYTE);
                     peers.add(new InetSocketAddress(ip, port));
                 }
             }
@@ -82,20 +86,8 @@ public class TrackerResponse {
         }
     }
 
-    public String getFailureReason() {
-        return failureReason;
-    }
-
-    public String getWarningMessage() {
-        return warningMessage;
-    }
-
     public int getInterval() {
         return interval;
-    }
-
-    public int getMinInterval() {
-        return minInterval;
     }
 
     public String getTrackerId() {

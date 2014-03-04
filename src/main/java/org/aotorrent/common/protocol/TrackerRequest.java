@@ -46,15 +46,15 @@ public class TrackerRequest {
 
         StringBuilder requestString = new StringBuilder(url.toString())
                 .append(firstSeparator)
-                .append("info_hash=").append(new String(URLCodec.encodeUrl(null, infoHash)).replace("+", "%20")).append("&")
-                .append("peer_id=").append(new String(URLCodec.encodeUrl(null, peerId))).append("&")
-                .append("port=").append(port).append("&")
-                .append("uploaded=").append(uploaded).append("&")
-                .append("downloaded=").append(downloaded).append("&")
-                .append("left=").append(left).append("&")
-                .append("compact=").append((compact) ? "1" : "0").append("&")
-                .append("event=").append(event).append("&")
-                .append("numwant=").append(numWant).append("&")
+                .append("info_hash=").append(new String(URLCodec.encodeUrl(null, infoHash)).replace("+", "%20")).append('&')
+                .append("peer_id=").append(new String(URLCodec.encodeUrl(null, peerId))).append('&')
+                .append("port=").append(port).append('&')
+                .append("uploaded=").append(uploaded).append('&')
+                .append("downloaded=").append(downloaded).append('&')
+                .append("left=").append(left).append('&')
+                .append("compact=").append((compact) ? "1" : "0").append('&')
+                .append("event=").append(event).append('&')
+                .append("numwant=").append(numWant).append('&')
                 .append("trackerid=").append(trackerId);
 
 
@@ -66,7 +66,7 @@ public class TrackerRequest {
         STOPPED("stopped"),
         COMPLETED("completed");
 
-        String event;
+        private String event;
 
         RequestEvent(String event) {
             this.event = event;
