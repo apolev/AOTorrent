@@ -16,12 +16,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.*;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ExecutionException;
 
 /**
@@ -186,18 +181,12 @@ public class Torrent {
         return getHash(info);
     }
 
-    public List<URL> getTrackers() {
-        List<URL> trackerUrls = Lists.newArrayList();
+    public Collection<String> getTrackers() {
+        List<String> trackerUrls = Lists.newArrayList();
 
         for (List<String> list : announce) {
             for (String trackerUrl : list) {
-                try {
-                    URL url = new URL(trackerUrl);
-                    trackerUrls.add(url);
-                } catch (MalformedURLException e) {
-                    //Ignoring this url
-                }
-
+                trackerUrls.add(trackerUrl);
             }
         }
 

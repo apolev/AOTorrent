@@ -6,7 +6,7 @@ import org.slf4j.LoggerFactory;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.net.URL;
+import java.net.MalformedURLException;
 import java.util.Date;
 import java.util.Set;
 
@@ -21,7 +21,7 @@ public abstract class AbstractTrackerConnection implements Runnable {
     protected final int port;
     protected final InetAddress ip;
     protected final boolean noPeerId = true;
-    protected URL url;
+    protected String url;
     protected boolean shutdown = false;
     protected long uploaded = 0;
     protected long downloaded = 0;
@@ -33,7 +33,7 @@ public abstract class AbstractTrackerConnection implements Runnable {
     protected Date nextRequest = null;
     protected Set<InetSocketAddress> peers;
 
-    public AbstractTrackerConnection(URL url, byte[] peerId, InetAddress ip, byte[] infoHash, int port, TorrentEngine torrentEngine) {
+    public AbstractTrackerConnection(TorrentEngine torrentEngine, String url, byte[] infoHash, byte[] peerId, InetAddress ip, int port) {
         this.url = url;
         this.peerId = peerId;
         this.ip = ip;
@@ -50,16 +50,30 @@ public abstract class AbstractTrackerConnection implements Runnable {
                     Thread.sleep(nextRequest.getTime() - new Date().getTime());
                 } else {
                     getPeers();
+                    torrentEngine.mergePeers(peers);
                 }
             } catch (InterruptedException e) {
                 LOGGER.debug("Interrupted!");
+            } catch (MalformedURLException e) {
+                LOGGER.error("Malformed URL");
             }
         }
     }
 
-    protected abstract void getPeers();
+    protected abstract void getPeers() throws MalformedURLException;
 
     public void setShutdown(boolean shutdown) {
         this.shutdown = shutdown;
+    }
+
+
+    public static AbstractTrackerConnection createConnection(TorrentEngine torrentEngine, String url, byte[] infoHash, byte[] peerId, InetAddress ip, int port) {
+        if ("http".equalsIgnoreCase(url.substring(0, 4))) {
+            return new HTTPTrackerConnection(torrentEngine, url, infoHash, peerId, ip, port);
+        } else if ("udp".equalsIgnoreCase(url.substring(0, 3))) {
+            return new UDPTrackerConnection(torrentEngine, url, infoHash, peerId, ip, port);
+        }
+
+        return null;
     }
 }

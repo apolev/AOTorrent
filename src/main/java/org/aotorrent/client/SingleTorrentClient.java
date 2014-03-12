@@ -20,7 +20,6 @@ public class SingleTorrentClient {
             Torrent torrent = new Torrent(is, args[1]);
 
             TorrentEngine torrentEngine = new TorrentEngine(torrent);
-
             new Thread(torrentEngine).start();
 
         } catch (FileNotFoundException e) {

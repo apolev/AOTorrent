@@ -8,10 +8,7 @@ import org.aotorrent.common.protocol.tracker.HTTPTrackerResponse;
 import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.HttpURLConnection;
-import java.net.InetAddress;
-import java.net.URISyntaxException;
-import java.net.URL;
+import java.net.*;
 import java.util.Date;
 
 /**
@@ -23,13 +20,13 @@ public class HTTPTrackerConnection extends AbstractTrackerConnection {
     private final boolean compact = true;
     private final int numWant = 50;
 
-    public HTTPTrackerConnection(TorrentEngine torrentEngine, URL url, byte[] infoHash, byte[] peerId, InetAddress ip, int port) {
-        super(url, peerId, ip, infoHash, port, torrentEngine);
+    public HTTPTrackerConnection(TorrentEngine torrentEngine, String url, byte[] infoHash, byte[] peerId, InetAddress ip, int port) {
+        super(torrentEngine, url, infoHash, peerId, ip, port);
     }
 
     @Override
-    protected void getPeers() {
-        HTTPTrackerRequest request = new HTTPTrackerRequest(url, infoHash, peerId, port, uploaded, downloaded, left, compact, noPeerId, numWant, trackerId);
+    protected void getPeers() throws MalformedURLException {
+        HTTPTrackerRequest request = new HTTPTrackerRequest(new URL(url), infoHash, peerId, port, uploaded, downloaded, left, compact, noPeerId, numWant, trackerId);
         HttpURLConnection connection = null;
         try {
             connection = (HttpURLConnection) request.createRequest().openConnection();
@@ -47,7 +44,6 @@ public class HTTPTrackerConnection extends AbstractTrackerConnection {
                 seeders = response.getComplete();
                 leechers = response.getIncomplete();
                 nextRequest = new Date(System.currentTimeMillis() + (response.getInterval() * 1000));
-                torrentEngine.mergePeers(peers);
             }
 
         } catch (IOException e) {

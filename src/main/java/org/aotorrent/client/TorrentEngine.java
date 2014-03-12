@@ -6,7 +6,6 @@ import com.google.common.collect.Sets;
 import org.aotorrent.common.Piece;
 import org.aotorrent.common.Torrent;
 import org.aotorrent.common.connection.AbstractTrackerConnection;
-import org.aotorrent.common.connection.HTTPTrackerConnection;
 import org.aotorrent.common.connection.PeerConnection;
 import org.aotorrent.common.connection.events.SendHaveMessage;
 import org.aotorrent.common.connection.events.StopMessage;
@@ -16,7 +15,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.UnsupportedEncodingException;
-import java.net.*;
+import java.net.Inet4Address;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.UnknownHostException;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -46,14 +48,14 @@ public class TorrentEngine implements Runnable {
 
     private void initTrackers(InetAddress ip, int port) {
 
-        List<URL> trackers = torrent.getTrackers();
+        Collection<String> trackers = torrent.getTrackers();
 
         trackerConnectionThreads = Executors.newFixedThreadPool(trackers.size());
 
         peersThreads = Executors.newFixedThreadPool(5);
 
-        for (URL trackerUrl : trackers) {
-            HTTPTrackerConnection trackerConnection = new HTTPTrackerConnection(this, trackerUrl, torrent.getInfoHash(), peerId, ip, port);
+        for (String trackerUrl : trackers) {
+            AbstractTrackerConnection trackerConnection = AbstractTrackerConnection.createConnection(this, trackerUrl, torrent.getInfoHash(), peerId, ip, port);
             trackerConnectionThreads.submit(trackerConnection);
             trackerConnections.add(trackerConnection);
         }
