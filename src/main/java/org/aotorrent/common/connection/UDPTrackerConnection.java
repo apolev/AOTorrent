@@ -156,6 +156,7 @@ public class UDPTrackerConnection extends AbstractTrackerConnection {
                 }
 
                 this.peers = peers;
+                LOGGER.debug("Received peers :" + peers);
                 return;
             }
         }

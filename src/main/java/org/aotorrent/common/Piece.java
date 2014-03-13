@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.lang.ref.SoftReference;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.BitSet;
@@ -27,6 +28,7 @@ public class Piece implements Comparable<Piece> {
     private final byte[] hash;
 
     private ByteBuffer buffer;
+    private SoftReference<ByteBuffer> softBuffer;
 
     private BitSet blockComplete;
     private boolean complete = false;
@@ -74,7 +76,22 @@ public class Piece implements Comparable<Piece> {
     }
 
     public byte[] read(int offset, int length) throws IOException, FileNotFoundException {
-        return storage.read(index, offset, length);
+
+        if (isComplete()) {
+            ByteBuffer bb = softBuffer.get();
+            if (bb == null) {
+                final byte[] read = storage.read(index, 0, pieceLength);
+                bb = ByteBuffer.wrap(read);
+                softBuffer = new SoftReference<ByteBuffer>(bb);
+
+            }
+
+            byte[] buf = new byte[length];
+            bb.get(buf, offset, length);
+            return buf;
+        } else {
+            return new byte[0];
+        }
     }
 
     private void checkIsComplete() { //TODO make this in separate thread
@@ -88,7 +105,11 @@ public class Piece implements Comparable<Piece> {
                 } else {
                     blockComplete.clear();
                 }
+
+                softBuffer = new SoftReference<ByteBuffer>(ByteBuffer.wrap(buffer.array()));
+
                 buffer = null;
+
             }
         } catch (FileNotFoundException e) {
             LOGGER.error("Can't save piece", e);

@@ -69,7 +69,12 @@ public class FileStorage {
 
             ByteBuffer buf = ByteBuffer.wrap(byteBuffer.array(), (int) storageFile.getPieceOffset(), (int) storageFile.getLength());
 
-            final RandomAccessFile randomAccessFile = new RandomAccessFile(storageFile.getFile().getCanonicalPath(), "rw");
+            final File file = storageFile.getFile();
+
+            //noinspection ResultOfMethodCallIgnored
+            file.getParentFile().mkdirs();
+
+            final RandomAccessFile randomAccessFile = new RandomAccessFile(file.getCanonicalPath(), "rw");
             try {
                 FileChannel fileChannel = randomAccessFile.getChannel();
                 try {
@@ -99,7 +104,7 @@ public class FileStorage {
                 index += storageFile.getLength();
             } else if (index > offset && index < (offset + length)) {
 
-                final RandomAccessFile randomAccessFile = new RandomAccessFile(path.getCanonicalPath() + '\\' + storageFile.getFile().getCanonicalPath(), "rw");
+                final RandomAccessFile randomAccessFile = new RandomAccessFile(path.getCanonicalPath() + File.separator + storageFile.getFile().getCanonicalPath(), "rw");
                 try {
                     FileChannel fileChannel = randomAccessFile.getChannel();
                     try {

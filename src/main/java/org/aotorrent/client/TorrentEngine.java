@@ -101,7 +101,7 @@ public class TorrentEngine implements Runnable {
             this.pieces = createPieces();
             initTrackers(Inet4Address.getLocalHost(), DEFAULT_PORT);
 
-            while (!isTorrentDone()) {
+            while (!Thread.interrupted()) {
                 Thread.sleep(1000);
             }
 

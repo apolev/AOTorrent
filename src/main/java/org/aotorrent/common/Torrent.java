@@ -104,7 +104,7 @@ public class Torrent {
                 Map<String, BEncodeValue> valueMap = file.getMap();
 
                 TorrentFile tf = new TorrentFile(
-                        downloadPath + StringUtils.join(valueMap.get("path").getList(), '\\'),
+                        downloadPath + StringUtils.join(valueMap.get("path").getList(), File.separator),
                         valueMap.get("length").getLong(),
                         "");
 
