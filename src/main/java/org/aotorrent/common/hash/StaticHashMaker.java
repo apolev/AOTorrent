@@ -3,6 +3,7 @@ package org.aotorrent.common.hash;
 import com.google.common.collect.Lists;
 import org.aotorrent.common.Piece;
 import org.aotorrent.common.Torrent;
+import org.apache.commons.codec.digest.DigestUtils;
 
 import java.io.*;
 import java.util.List;
@@ -95,5 +96,25 @@ public class StaticHashMaker {
         }
         executor.shutdown();
         return sb.toString();
+    }
+
+    private static class HashMakerThread implements Callable<byte[]> {
+
+        private final byte[] data;
+        private final Semaphore semaphore;
+
+        public HashMakerThread(byte[] data, Semaphore semaphore) {
+            this.data = data;
+            this.semaphore = semaphore;
+        }
+
+        @Override
+        public byte[] call() throws Exception {
+            try {
+                return DigestUtils.sha1(data);
+            } finally {
+                semaphore.release();
+            }
+        }
     }
 }

@@ -16,6 +16,7 @@ import org.slf4j.LoggerFactory;
 import java.io.*;
 import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.net.SocketAddress;
 import java.net.SocketException;
 import java.nio.ByteBuffer;
 import java.util.BitSet;
@@ -31,6 +32,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class PeerConnection implements Runnable {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(PeerConnection.class);
+    private final boolean incomingConnection;
+    @Nullable
+    private final Socket incomingSocket;
 
     private AtomicBoolean choking = new AtomicBoolean(true);
     private AtomicBoolean interested = new AtomicBoolean(false);
@@ -44,7 +48,7 @@ public class PeerConnection implements Runnable {
     private boolean handshakeDone = false;
 
     @NotNull
-    private final InetSocketAddress socketAddress;
+    private final SocketAddress socketAddress;
     @NotNull
     private final TorrentEngine torrentEngine;
     @NotNull
@@ -66,17 +70,34 @@ public class PeerConnection implements Runnable {
         this.torrentEngine = torrentEngine;
         this.bitField = new BitSet();
         this.piecesMax = 10;
+        incomingConnection = false;
+        incomingSocket = null;
+    }
+
+    public PeerConnection(@NotNull Socket incomingSocket, @NotNull TorrentEngine torrentEngine) {
+        this.incomingSocket = incomingSocket;
+        this.incomingConnection = true;
+        this.socketAddress = incomingSocket.getLocalSocketAddress();
+        this.torrentEngine = torrentEngine;
+        this.bitField = new BitSet();
+        this.piecesMax = 10;
     }
 
     @Override
     public void run() {
 
         try {
-            Socket socket = new Socket(socketAddress.getAddress(), socketAddress.getPort());
+            Socket socket;
+
+            if (!incomingConnection) {
+                socket = new Socket(((InetSocketAddress) socketAddress).getAddress(), ((InetSocketAddress) socketAddress).getPort());
+            } else {
+                socket = incomingSocket;
+            }
 
             try {
+                assert socket != null;
                 inputStream = new BufferedInputStream(socket.getInputStream());
-
 
                 try {
                     outputStream = new BufferedOutputStream(socket.getOutputStream());
@@ -206,6 +227,10 @@ public class PeerConnection implements Runnable {
         final PeerRequest peerHandshake = new HandshakeRequest(torrentEngine.getInfoHash(), torrentEngine.getPeerId());
 
         sendToPeer(peerHandshake);
+
+        if (incomingConnection) {
+            return true;
+        }
 
         final int protocolStringLength = inputStream.read();
 
@@ -365,6 +390,10 @@ public class PeerConnection implements Runnable {
         incomingMessages.add(message);
     }
 
+    public void processMessage(PeerInterestedMessage peerInterestedMessage) {
+        unChoke();
+    }
+
     private class IncomingMessagesHandler implements Runnable {
 
         @Override
@@ -403,7 +432,7 @@ public class PeerConnection implements Runnable {
                                 receivedUnChoke();
                                 break;
                             case INTERESTED:
-                                peerInterested.set(true);
+                                receivedInterested();
                                 break;
                             case NOT_INTERESTED:
                                 peerInterested.set(false);
@@ -441,6 +470,11 @@ public class PeerConnection implements Runnable {
             } finally {
                 LOGGER.debug("Closing connection to " + socketAddress + "(incoming thread)");
             }
+        }
+
+        private void receivedInterested() {
+            peerInterested.set(true);
+            incomingMessages.add(new PeerInterestedMessage());
         }
 
         private void receivedUnChoke() {

@@ -84,6 +84,10 @@ public class Torrent {
         this.fileStorage = new FileStorage(torrentFiles, pieceLength, new File("."));
     }
 
+    public Torrent(@NotNull String torrentPath, String downloadPath) throws IOException, InvalidBEncodingException {
+        this(new BufferedInputStream(new FileInputStream(torrentPath)), downloadPath);
+    }
+
     public Torrent(@NotNull final InputStream is, String downloadPath) throws IOException, InvalidBEncodingException {
         this.downloadPath = downloadPath;
         Map<String, BEncodeValue> parsed = BEncodeParser.parse(is);

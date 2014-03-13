@@ -15,10 +15,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.UnsupportedEncodingException;
-import java.net.Inet4Address;
-import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.net.UnknownHostException;
+import java.net.Socket;
+import java.net.SocketAddress;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -28,13 +27,12 @@ import java.util.concurrent.Executors;
  * User:    dmitry
  * Date:    11/8/13
  */
-public class TorrentEngine implements Runnable {
+public class TorrentEngine {
     private static final Logger LOGGER = LoggerFactory.getLogger(TorrentEngine.class);
 
-    private static final int DEFAULT_PORT = 6968;
-
+    private final InetSocketAddress address;
     private Set<AbstractTrackerConnection> trackerConnections = Sets.newLinkedHashSet();
-    private Map<InetSocketAddress, PeerConnection> peerConnections = Maps.newHashMap();
+    private Map<SocketAddress, PeerConnection> peerConnections = Maps.newHashMap();
     private List<Piece> pieces;
     private final Set<Piece> inProgress = Sets.newHashSet();
     private ExecutorService trackerConnectionThreads;
@@ -42,11 +40,12 @@ public class TorrentEngine implements Runnable {
     private byte[] peerId = "-AO0001-000000000000".getBytes();      //TODO need to give right peerid
     private final Torrent torrent;
 
-    public TorrentEngine(Torrent torrent) throws UnsupportedEncodingException {
+    TorrentEngine(Torrent torrent, InetSocketAddress address) {
         this.torrent = torrent;
+        this.address = address;
     }
 
-    private void initTrackers(InetAddress ip, int port) {
+    private void initTrackers() {
 
         Collection<String> trackers = torrent.getTrackers();
 
@@ -55,7 +54,7 @@ public class TorrentEngine implements Runnable {
         peersThreads = Executors.newFixedThreadPool(5);
 
         for (String trackerUrl : trackers) {
-            AbstractTrackerConnection trackerConnection = AbstractTrackerConnection.createConnection(this, trackerUrl, torrent.getInfoHash(), peerId, ip, port);
+            AbstractTrackerConnection trackerConnection = AbstractTrackerConnection.createConnection(this, trackerUrl, torrent.getInfoHash(), peerId, address.getAddress(), address.getPort());
             trackerConnectionThreads.submit(trackerConnection);
             trackerConnections.add(trackerConnection);
         }
@@ -95,36 +94,9 @@ public class TorrentEngine implements Runnable {
         return pieceList;
     }
 
-    @Override
-    public void run() {
-        try {
-            this.pieces = createPieces();
-            initTrackers(Inet4Address.getLocalHost(), DEFAULT_PORT);
-
-            while (!Thread.interrupted()) {
-                Thread.sleep(1000);
-            }
-
-            for (PeerConnection peerConnection : peerConnections.values()) {
-                peerConnection.addIncomingMessage(new StopMessage());
-            }
-
-            for (AbstractTrackerConnection trackerConnection : trackerConnections) {
-                trackerConnection.setShutdown(true);
-            }
-
-            peersThreads.shutdown();
-            peersThreads.shutdownNow();
-            trackerConnectionThreads.shutdown();
-            trackerConnectionThreads.shutdownNow();
-
-        } catch (UnsupportedEncodingException e) {
-            LOGGER.error("Unsupported Encoding", e);
-        } catch (UnknownHostException e) {
-            LOGGER.error("Can't determine own ip address", e);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
+    void init() throws UnsupportedEncodingException {
+        this.pieces = createPieces();
+        initTrackers();
     }
 
     public byte[] getPeerId() {
@@ -206,5 +178,27 @@ public class TorrentEngine implements Runnable {
 
     public byte[] getInfoHash() {
         return torrent.getInfoHash();
+    }
+
+    public void shutdown() {
+        for (PeerConnection peerConnection : peerConnections.values()) {
+            peerConnection.addIncomingMessage(new StopMessage());
+        }
+
+        for (AbstractTrackerConnection trackerConnection : trackerConnections) {
+            trackerConnection.setShutdown(true);
+        }
+
+        peersThreads.shutdown();
+        peersThreads.shutdownNow();
+        trackerConnectionThreads.shutdown();
+        trackerConnectionThreads.shutdownNow();
+    }
+
+    public void addIncomingConnection(Socket incomingSocket) {
+        PeerConnection peerConnection = new PeerConnection(incomingSocket, this);
+        peerConnections.put(incomingSocket.getRemoteSocketAddress(), peerConnection);
+        peersThreads.submit(peerConnection);
+
     }
 }
