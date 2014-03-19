@@ -2,10 +2,10 @@ package org.aotorrent.common;
 
 import org.aotorrent.common.storage.FileStorage;
 import org.apache.commons.codec.digest.DigestUtils;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.lang.ref.SoftReference;
 import java.nio.ByteBuffer;
@@ -41,6 +41,17 @@ public class Piece implements Comparable<Piece> {
         blockComplete = new BitSet();
         this.hash = hash;
         this.storage = storage;
+        checkExistingData();
+    }
+
+    private void checkExistingData() {
+        try {
+            final byte[] bytes = storage.read(index, 0, pieceLength);
+            buffer = ByteBuffer.wrap(bytes);
+            checkIsComplete(true);
+        } catch (IOException e) {
+            //file(s) are not exist
+        }
     }
 
     public void write(byte[] data, int offset) {
@@ -72,17 +83,17 @@ public class Piece implements Comparable<Piece> {
             blockComplete.set(i + blockOffset);
         }
 
-        checkIsComplete();
+        checkIsComplete(false);
     }
 
-    public byte[] read(int offset, int length) throws IOException, FileNotFoundException {
+    public byte[] read(int offset, int length) throws IOException {
 
         if (isComplete()) {
             ByteBuffer bb = softBuffer.get();
             if (bb == null) {
                 final byte[] read = storage.read(index, 0, pieceLength);
                 bb = ByteBuffer.wrap(read);
-                softBuffer = new SoftReference<ByteBuffer>(bb);
+                softBuffer = new SoftReference<>(bb);
 
             }
 
@@ -94,25 +105,20 @@ public class Piece implements Comparable<Piece> {
         }
     }
 
-    private void checkIsComplete() { //TODO make this in separate thread
+    private void checkIsComplete(boolean initial) { //TODO make this in separate thread
         try {
-            if (isAllBlocksComplete()) {
+            if (initial || isAllBlocksComplete()) {
                 byte[] pieceHash = DigestUtils.sha1(buffer.array());
 
                 if (Arrays.equals(pieceHash, hash)) {
                     storage.store(index, buffer);
+                    softBuffer = new SoftReference<>(ByteBuffer.wrap(buffer.array()));
                     complete = true;
                 } else {
                     blockComplete.clear();
                 }
-
-                softBuffer = new SoftReference<ByteBuffer>(ByteBuffer.wrap(buffer.array()));
-
                 buffer = null;
-
             }
-        } catch (FileNotFoundException e) {
-            LOGGER.error("Can't save piece", e);
         } catch (IOException e) {
             LOGGER.error("Can't save piece", e);
         }
@@ -131,7 +137,7 @@ public class Piece implements Comparable<Piece> {
     }
 
     @Override
-    public int compareTo(Piece otherPiece) {
+    public int compareTo(@NotNull Piece otherPiece) {
         if (isComplete() == otherPiece.isComplete()) {
             if (peerCount == otherPiece.getPeerCount()) {
                 return Arrays.hashCode(hash) - Arrays.hashCode(otherPiece.getHash());
@@ -165,13 +171,7 @@ public class Piece implements Comparable<Piece> {
 
         Piece piece = (Piece) o;
 
-        if (index != piece.getIndex()) {
-            return false;
-        }
-        if (pieceLength != piece.getPieceLength()) {
-            return false;
-        }
-        return Arrays.equals(hash, piece.getHash());
+        return index == piece.getIndex() && pieceLength == piece.getPieceLength() && Arrays.equals(hash, piece.getHash());
     }
 
     @Override
