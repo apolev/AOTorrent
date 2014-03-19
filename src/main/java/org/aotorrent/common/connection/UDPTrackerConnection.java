@@ -12,6 +12,7 @@ import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
+import java.util.Collections;
 import java.util.Date;
 import java.util.Random;
 import java.util.Set;
@@ -22,17 +23,17 @@ public class UDPTrackerConnection extends AbstractTrackerConnection {
     }
 
     @Override
-    protected void getPeers() {
+    protected Set<InetSocketAddress> getPeers() {
 
         final Random random = new Random(System.currentTimeMillis());
 
         try {
             DatagramSocket clientSocket = new DatagramSocket();
 
-            int hostportDelimiter = url.indexOf(':', 6);
+            int hostPortDelimiter = url.indexOf(':', 6);
 
-            String host = url.substring(6, hostportDelimiter);
-            int port = Integer.parseInt(url.substring(hostportDelimiter + 1, url.indexOf('/', hostportDelimiter)));
+            String host = url.substring(6, hostPortDelimiter);
+            int port = Integer.parseInt(url.substring(hostPortDelimiter + 1, url.indexOf('/', hostPortDelimiter)));
             InetAddress ipAddress = InetAddress.getByName(host);
 
             int transactionId = random.nextInt();
@@ -49,12 +50,14 @@ public class UDPTrackerConnection extends AbstractTrackerConnection {
             DatagramPacket announceConnection = new DatagramPacket(announceRequest, announceRequest.length, ipAddress, port);
             clientSocket.send(announceConnection);
 
-            announceReply(connectionId, transactionId, clientSocket);
+            return announceReply(connectionId, transactionId, clientSocket);
 
 
         } catch (IOException e) {
             e.printStackTrace();
         }
+
+        return Collections.emptySet();
     }
 
     private byte[] connectRequest(final int transactionId) {
@@ -115,7 +118,7 @@ public class UDPTrackerConnection extends AbstractTrackerConnection {
         return bb.array();
     }
 
-    private void announceReply(long connectionId, int transactionId, DatagramSocket clientSocket) throws IOException {
+    private Set<InetSocketAddress> announceReply(long connectionId, int transactionId, DatagramSocket clientSocket) throws IOException {
         final long startTime = System.currentTimeMillis();
 
         int recievedTransactionId = 0;
@@ -155,9 +158,7 @@ public class UDPTrackerConnection extends AbstractTrackerConnection {
                     peers.add(inetSocketAddress);
                 }
 
-                this.peers = peers;
-                LOGGER.debug("Received peers :" + peers);
-                return;
+                return peers;
             }
         }
     }

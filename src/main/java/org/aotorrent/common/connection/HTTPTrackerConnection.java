@@ -1,5 +1,6 @@
 package org.aotorrent.common.connection;
 
+import com.google.common.collect.Sets;
 import org.aotorrent.client.TorrentEngine;
 import org.aotorrent.common.bencode.InvalidBEncodingException;
 import org.aotorrent.common.protocol.tracker.HTTPTrackerRequest;
@@ -10,6 +11,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.*;
 import java.util.Date;
+import java.util.Set;
 
 /**
  * Project: AOTorrent
@@ -17,17 +19,17 @@ import java.util.Date;
  * Date:    11/8/13
  */
 public class HTTPTrackerConnection extends AbstractTrackerConnection {
-    private final boolean compact = true;
-    private final int numWant = 50;
+    private static final boolean COMPACT = true;
 
     public HTTPTrackerConnection(TorrentEngine torrentEngine, String url, byte[] infoHash, byte[] peerId, InetAddress ip, int port) {
         super(torrentEngine, url, infoHash, peerId, ip, port);
     }
 
     @Override
-    protected void getPeers() throws MalformedURLException {
-        HTTPTrackerRequest request = new HTTPTrackerRequest(new URL(url), infoHash, peerId, port, uploaded, downloaded, left, compact, noPeerId, numWant, trackerId);
+    protected Set<InetSocketAddress> getPeers() throws MalformedURLException {
+        HTTPTrackerRequest request = new HTTPTrackerRequest(new URL(url), infoHash, peerId, port, uploaded, downloaded, left, COMPACT, noPeerId, NUM_WANT, trackerId);
         HttpURLConnection connection = null;
+        Set<InetSocketAddress> peers = Sets.newHashSet();
         try {
             connection = (HttpURLConnection) request.createRequest().openConnection();
             connection.connect();
@@ -46,20 +48,17 @@ public class HTTPTrackerConnection extends AbstractTrackerConnection {
                 nextRequest = new Date(System.currentTimeMillis() + (response.getInterval() * 1000));
             }
 
-        } catch (IOException e) {
-            synchronized (this) {
-                nextRequest = new Date(System.currentTimeMillis() + (300 * 1000));
-            }
-        } catch (InvalidBEncodingException e) {
+        } catch (IOException | InvalidBEncodingException e) {
             synchronized (this) {
                 nextRequest = new Date(System.currentTimeMillis() + (300 * 1000));
             }
         } catch (URISyntaxException e) {
-            LOGGER.error("URI syntax error", e);
+            throw new MalformedURLException(e.getMessage());
         } finally {
             if (connection != null) {
                 connection.disconnect();
             }
         }
+        return peers;
     }
 }

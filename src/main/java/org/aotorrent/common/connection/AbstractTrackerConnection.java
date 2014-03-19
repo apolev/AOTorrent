@@ -14,6 +14,7 @@ import java.util.Set;
  * Created by dmitry on 3/5/14.
  */
 public abstract class AbstractTrackerConnection implements Runnable {
+    protected static final int NUM_WANT = 50;
     protected static final Logger LOGGER = LoggerFactory.getLogger(HTTPTrackerConnection.class);
     protected final TorrentEngine torrentEngine;
     protected final byte[] infoHash;
@@ -31,7 +32,6 @@ public abstract class AbstractTrackerConnection implements Runnable {
     protected String event = "started";
     protected String trackerId = null;
     protected Date nextRequest = null;
-    protected Set<InetSocketAddress> peers;
 
     public AbstractTrackerConnection(TorrentEngine torrentEngine, String url, byte[] infoHash, byte[] peerId, InetAddress ip, int port) {
         this.url = url;
@@ -49,7 +49,9 @@ public abstract class AbstractTrackerConnection implements Runnable {
                 if (nextRequest != null && nextRequest.after(new Date())) {
                     Thread.sleep(nextRequest.getTime() - new Date().getTime());
                 } else {
-                    getPeers();
+                    LOGGER.debug("Starting to get peers from " + url);
+                    final Set<InetSocketAddress> peers = getPeers();
+                    LOGGER.debug("Got peers " + peers);
                     torrentEngine.mergePeers(peers);
                 }
             } catch (InterruptedException e) {
@@ -60,7 +62,7 @@ public abstract class AbstractTrackerConnection implements Runnable {
         }
     }
 
-    protected abstract void getPeers() throws MalformedURLException;
+    protected abstract Set<InetSocketAddress> getPeers() throws MalformedURLException;
 
     public void setShutdown(boolean shutdown) {
         this.shutdown = shutdown;
