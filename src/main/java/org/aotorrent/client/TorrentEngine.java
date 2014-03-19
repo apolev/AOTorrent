@@ -65,6 +65,10 @@ public class TorrentEngine {
             peers.removeAll(peerConnections.keySet());
 
             for (InetSocketAddress peer : peers) {
+                if (peer.equals(address)) {
+                    continue;
+                }
+
                 PeerConnection peerConnection = new PeerConnection(peer, this);
                 peerConnections.put(peer, peerConnection);
                 peersThreads.submit(peerConnection);
