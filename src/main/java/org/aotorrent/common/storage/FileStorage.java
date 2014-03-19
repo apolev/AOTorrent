@@ -4,7 +4,6 @@ import com.google.common.collect.Lists;
 import org.aotorrent.common.TorrentFile;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
@@ -62,7 +61,7 @@ public class FileStorage {
         this.path = path;
     }
 
-    public void store(int pieceIndex, ByteBuffer byteBuffer) throws IOException, FileNotFoundException {
+    public void store(int pieceIndex, ByteBuffer byteBuffer) throws IOException {
         List<StorageFilesInfo> storageFiles = getAffectedFiles(pieceIndex);
 
         for (StorageFilesInfo storageFile : storageFiles) {
@@ -71,11 +70,12 @@ public class FileStorage {
 
             final File file = storageFile.getFile();
 
-            //noinspection ResultOfMethodCallIgnored
-            file.getParentFile().mkdirs();
+            if (file.getParentFile() != null) {
+                //noinspection ResultOfMethodCallIgnored
+                file.getParentFile().mkdirs();
+            }
 
-            final RandomAccessFile randomAccessFile = new RandomAccessFile(file.getCanonicalPath(), "rw");
-            try {
+            try (RandomAccessFile randomAccessFile = new RandomAccessFile(file.getCanonicalPath(), "rw")) {
                 FileChannel fileChannel = randomAccessFile.getChannel();
                 try {
                     fileChannel.position(storageFile.getFileOffset());
@@ -85,14 +85,12 @@ public class FileStorage {
                         fileChannel.close();
                     }
                 }
-            } finally {
-                randomAccessFile.close();
             }
 
         }
     }
 
-    public byte[] read(int pieceIndex, int offset, int length) throws IOException, FileNotFoundException {
+    public byte[] read(int pieceIndex, int offset, int length) throws IOException {
 
         List<StorageFilesInfo> storageFiles = getAffectedFiles(pieceIndex);
         int index = 0;
@@ -102,10 +100,9 @@ public class FileStorage {
 
             if (storageFile.getLength() < (offset - index)) {
                 index += storageFile.getLength();
-            } else if (index > offset && index < (offset + length)) {
+            } else if (index >= offset && index < (offset + length)) {
 
-                final RandomAccessFile randomAccessFile = new RandomAccessFile(path.getCanonicalPath() + File.separator + storageFile.getFile().getCanonicalPath(), "rw");
-                try {
+                try (RandomAccessFile randomAccessFile = new RandomAccessFile(path.getCanonicalPath() + File.separator + storageFile.getFile().getCanonicalPath(), "rw")) {
                     FileChannel fileChannel = randomAccessFile.getChannel();
                     try {
                         fileChannel.position(offset - index);
@@ -116,8 +113,6 @@ public class FileStorage {
                             fileChannel.close();
                         }
                     }
-                } finally {
-                    randomAccessFile.close();
                 }
             }
         }
