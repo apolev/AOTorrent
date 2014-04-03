@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.util.Collection;
 import java.util.List;
 
 /**
@@ -63,7 +64,7 @@ public class FileStorage {
     }
 
     public void store(int pieceIndex, ByteBuffer byteBuffer) throws IOException, FileNotFoundException {
-        List<StorageFilesInfo> storageFiles = getAffectedFiles(pieceIndex);
+        Collection<StorageFilesInfo> storageFiles = getAffectedFiles(pieceIndex);
 
         for (StorageFilesInfo storageFile : storageFiles) {
 
@@ -94,7 +95,7 @@ public class FileStorage {
 
     public byte[] read(int pieceIndex, int offset, int length) throws IOException, FileNotFoundException {
 
-        List<StorageFilesInfo> storageFiles = getAffectedFiles(pieceIndex);
+        Collection<StorageFilesInfo> storageFiles = getAffectedFiles(pieceIndex);
         int index = 0;
         ByteBuffer buf = ByteBuffer.allocate(length);
 
@@ -102,14 +103,28 @@ public class FileStorage {
 
             if (storageFile.getLength() < (offset - index)) {
                 index += storageFile.getLength();
-            } else if (index > offset && index < (offset + length)) {
-
+            } else if (index >= offset && index <= (offset + length)) {
+                final RandomAccessFile randomAccessFile = new RandomAccessFile(path.getCanonicalPath() + File.separator + storageFile.getFile().getCanonicalPath(), "rw");
+                try {
+                    FileChannel fileChannel = randomAccessFile.getChannel();
+                    try {
+                        int actuallyRead = fileChannel.read(buf, (index - offset));
+                        index += actuallyRead;
+                    } finally {
+                        if (fileChannel != null) {
+                            fileChannel.close();
+                        }
+                    }
+                } finally {
+                    randomAccessFile.close();
+                }
+            } else if (storageFile.getLength() >= (offset - index) && index < offset && index <= (offset + length)) {
                 final RandomAccessFile randomAccessFile = new RandomAccessFile(path.getCanonicalPath() + File.separator + storageFile.getFile().getCanonicalPath(), "rw");
                 try {
                     FileChannel fileChannel = randomAccessFile.getChannel();
                     try {
                         fileChannel.position(offset - index);
-                        int actuallyRead = fileChannel.read(buf, (offset + length - index));
+                        int actuallyRead = fileChannel.read(buf);
                         index += actuallyRead;
                     } finally {
                         if (fileChannel != null) {
@@ -124,7 +139,7 @@ public class FileStorage {
         return buf.array();
     }
 
-    private List<StorageFilesInfo> getAffectedFiles(int pieceIndex) {
+    private Collection<StorageFilesInfo> getAffectedFiles(int pieceIndex) {
         long pieceStartPosition = pieceIndex * pieceLength;
         long pieceEndPosition = pieceStartPosition + pieceLength;
         long fileStartPosition = 0;
