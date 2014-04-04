@@ -49,7 +49,7 @@ public class Torrent {
     private final long size;
     private final FileStorage fileStorage;
 
-    public static Torrent create(String announce, String fileName) throws IOException, InvalidBEncodingException, ExecutionException, InterruptedException, FileNotFoundException, UnsupportedEncodingException {
+    public static Torrent create(String announce, String fileName) throws IOException, InvalidBEncodingException, ExecutionException, InterruptedException {
         List<String> announcesIn = Lists.newArrayList(announce);
         List<List<String>> announcesOut = Lists.newArrayList();
         announcesOut.add(announcesIn);
@@ -60,7 +60,7 @@ public class Torrent {
         return new Torrent(announcesOut, file.getParentFile(), fileNames, null, null);
     }
 
-    private Torrent(@NotNull final List<List<String>> announce, File root, @NotNull Iterable<File> files, @Nullable String comment, @Nullable String createdBy) throws IOException, InvalidBEncodingException, ExecutionException, InterruptedException, FileNotFoundException, UnsupportedEncodingException {
+    private Torrent(@NotNull final List<List<String>> announce, File root, @NotNull Iterable<File> files, @Nullable String comment, @Nullable String createdBy) throws IOException, InvalidBEncodingException, ExecutionException, InterruptedException {
         this.announce = announce;
         this.root = root;
         List<TorrentFile> torrentFiles = Lists.newArrayList();
@@ -92,7 +92,8 @@ public class Torrent {
         this.downloadPath = downloadPath;
         Map<String, BEncodeValue> parsed = BEncodeParser.parse(is);
         String announceURL = parsed.get("announce").getString();
-        announce = Lists.<List<String>>newArrayList(Lists.newArrayList(announceURL));
+        announce = Lists.newArrayList();
+        announce.add(Lists.newArrayList(announceURL));
         comment = String.valueOf(parsed.get("comment"));
         createdBy = String.valueOf(parsed.get("created by"));
         Map<String, BEncodeValue> info = parsed.get("info").getMap();
@@ -132,7 +133,7 @@ public class Torrent {
         this.fileStorage = new FileStorage(files, pieceLength, new File("."));
     }
 
-    public void save(OutputStream outputStream) throws IOException, InvalidBEncodingException, UnsupportedEncodingException {
+    public void save(OutputStream outputStream) throws IOException, InvalidBEncodingException {
         Map<String, BEncodeValue> torrentMap = Maps.newHashMap();
         torrentMap.put("announce", new BEncodeValue(announce.get(0).get(0)));
         //TODO announceList
@@ -197,7 +198,7 @@ public class Torrent {
         return trackerUrls;
     }
 
-    private byte[] getHash(Map<String, BEncodeValue> info) throws IOException, InvalidBEncodingException, UnsupportedEncodingException {
+    private byte[] getHash(Map<String, BEncodeValue> info) throws IOException, InvalidBEncodingException {
 
         ByteArrayOutputStream os = new ByteArrayOutputStream();
 

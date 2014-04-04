@@ -2,7 +2,9 @@ package org.aotorrent.common;
 
 import org.apache.commons.codec.digest.DigestUtils;
 
-import java.io.*;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
 
 /**
  * User: dnapolov
@@ -17,15 +19,11 @@ public class TorrentFile {
 
     private final String md5sum;
 
-    private long allocated = 0;
 
-    TorrentFile(File file) throws IOException, FileNotFoundException, UnsupportedEncodingException {
+    TorrentFile(File file) throws IOException {
         length = file.length();
-        final FileInputStream fileInputStream = new FileInputStream(file);
-        try {
+        try (FileInputStream fileInputStream = new FileInputStream(file)) {
             md5sum = new String(DigestUtils.md5(fileInputStream), Torrent.DEFAULT_TORRENT_ENCODING);
-        } finally {
-            fileInputStream.close();
         }
         path = file.getPath();
     }

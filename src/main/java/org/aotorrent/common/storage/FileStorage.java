@@ -4,7 +4,6 @@ import com.google.common.collect.Lists;
 import org.aotorrent.common.TorrentFile;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
@@ -63,7 +62,7 @@ public class FileStorage {
         this.path = path;
     }
 
-    public void store(int pieceIndex, ByteBuffer byteBuffer) throws IOException, FileNotFoundException {
+    public void store(int pieceIndex, ByteBuffer byteBuffer) throws IOException {
         Collection<StorageFilesInfo> storageFiles = getAffectedFiles(pieceIndex);
 
         for (StorageFilesInfo storageFile : storageFiles) {
@@ -75,25 +74,17 @@ public class FileStorage {
             //noinspection ResultOfMethodCallIgnored
             file.getParentFile().mkdirs();
 
-            final RandomAccessFile randomAccessFile = new RandomAccessFile(file.getCanonicalPath(), "rw");
-            try {
-                FileChannel fileChannel = randomAccessFile.getChannel();
-                try {
+            try (RandomAccessFile randomAccessFile = new RandomAccessFile(file.getCanonicalPath(), "rw")) {
+                try (FileChannel fileChannel = randomAccessFile.getChannel()) {
                     fileChannel.position(storageFile.getFileOffset());
                     fileChannel.write(buf);
-                } finally {
-                    if (fileChannel != null) {
-                        fileChannel.close();
-                    }
                 }
-            } finally {
-                randomAccessFile.close();
             }
 
         }
     }
 
-    public byte[] read(int pieceIndex, int offset, int length) throws IOException, FileNotFoundException {
+    public byte[] read(int pieceIndex, int offset, int length) throws IOException {
 
         Collection<StorageFilesInfo> storageFiles = getAffectedFiles(pieceIndex);
         int index = 0;
@@ -104,35 +95,19 @@ public class FileStorage {
             if (storageFile.getLength() < (offset - index)) {
                 index += storageFile.getLength();
             } else if (index >= offset && index <= (offset + length)) {
-                final RandomAccessFile randomAccessFile = new RandomAccessFile(path.getCanonicalPath() + File.separator + storageFile.getFile().getCanonicalPath(), "rw");
-                try {
-                    FileChannel fileChannel = randomAccessFile.getChannel();
-                    try {
+                try (RandomAccessFile randomAccessFile = new RandomAccessFile(path.getCanonicalPath() + File.separator + storageFile.getFile().getCanonicalPath(), "rw")) {
+                    try (FileChannel fileChannel = randomAccessFile.getChannel()) {
                         int actuallyRead = fileChannel.read(buf, (index - offset));
                         index += actuallyRead;
-                    } finally {
-                        if (fileChannel != null) {
-                            fileChannel.close();
-                        }
                     }
-                } finally {
-                    randomAccessFile.close();
                 }
             } else if (storageFile.getLength() >= (offset - index) && index < offset && index <= (offset + length)) {
-                final RandomAccessFile randomAccessFile = new RandomAccessFile(path.getCanonicalPath() + File.separator + storageFile.getFile().getCanonicalPath(), "rw");
-                try {
-                    FileChannel fileChannel = randomAccessFile.getChannel();
-                    try {
+                try (RandomAccessFile randomAccessFile = new RandomAccessFile(path.getCanonicalPath() + File.separator + storageFile.getFile().getCanonicalPath(), "rw")) {
+                    try (FileChannel fileChannel = randomAccessFile.getChannel()) {
                         fileChannel.position(offset - index);
                         int actuallyRead = fileChannel.read(buf);
                         index += actuallyRead;
-                    } finally {
-                        if (fileChannel != null) {
-                            fileChannel.close();
-                        }
                     }
-                } finally {
-                    randomAccessFile.close();
                 }
             }
         }

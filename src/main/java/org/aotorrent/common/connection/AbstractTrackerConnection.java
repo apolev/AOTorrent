@@ -1,6 +1,7 @@
 package org.aotorrent.common.connection;
 
 import org.aotorrent.client.TorrentEngine;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -15,23 +16,24 @@ import java.util.Set;
  */
 public abstract class AbstractTrackerConnection implements Runnable {
     protected static final Logger LOGGER = LoggerFactory.getLogger(HTTPTrackerConnection.class);
-    protected final TorrentEngine torrentEngine;
-    protected final byte[] infoHash;
-    protected final byte[] peerId;
-    protected final int port;
-    protected final InetAddress ip;
-    protected final boolean noPeerId = true;
-    protected String url;
-    protected boolean shutdown = false;
-    protected long uploaded = 0;
-    protected long downloaded = 0;
-    protected long left = 0;
-    protected long seeders = 0;
-    protected long leechers = 0;
-    protected String event = "started";
-    protected String trackerId = null;
-    protected Date nextRequest = null;
-    protected Set<InetSocketAddress> peers;
+    protected static final int NUM_WANT = 50;
+    private final TorrentEngine torrentEngine;
+    private final byte[] infoHash;
+    private final byte[] peerId;
+    private final int port;
+    private final InetAddress ip;
+    private final boolean noPeerId = true;
+    private String url;
+    private boolean shutdown = false;
+    private long uploaded = 0;
+    private long downloaded = 0;
+    private long left = 0;
+    private long seeders = 0;
+    private long leechers = 0;
+    private String event = "started";
+    private String trackerId = null;
+    private Date nextRequest = null;
+    private Set<InetSocketAddress> peers;
 
     public AbstractTrackerConnection(TorrentEngine torrentEngine, String url, byte[] infoHash, byte[] peerId, InetAddress ip, int port) {
         this.url = url;
@@ -44,13 +46,13 @@ public abstract class AbstractTrackerConnection implements Runnable {
 
     @Override
     public void run() {
-        while (!shutdown && !Thread.interrupted()) {
+        while (!isShutdown() && !Thread.interrupted()) {
             try {
-                if (nextRequest != null && nextRequest.after(new Date())) {
-                    Thread.sleep(nextRequest.getTime() - new Date().getTime());
+                if (getNextRequest() != null && getNextRequest().after(new Date())) {
+                    Thread.sleep(getNextRequest().getTime() - new Date().getTime());
                 } else {
-                    getPeers();
-                    torrentEngine.mergePeers(peers);
+                    obtainPeers();
+                    getTorrentEngine().mergePeers(getPeers());
                 }
             } catch (InterruptedException e) {
                 LOGGER.debug("Interrupted!");
@@ -60,13 +62,13 @@ public abstract class AbstractTrackerConnection implements Runnable {
         }
     }
 
-    protected abstract void getPeers() throws MalformedURLException;
+    protected abstract void obtainPeers() throws MalformedURLException;
 
     public void setShutdown(boolean shutdown) {
         this.shutdown = shutdown;
     }
 
-
+    @Nullable
     public static AbstractTrackerConnection createConnection(TorrentEngine torrentEngine, String url, byte[] infoHash, byte[] peerId, InetAddress ip, int port) {
         if ("http".equalsIgnoreCase(url.substring(0, 4))) {
             return new HTTPTrackerConnection(torrentEngine, url, infoHash, peerId, ip, port);
@@ -75,5 +77,77 @@ public abstract class AbstractTrackerConnection implements Runnable {
         }
 
         return null;
+    }
+
+    protected TorrentEngine getTorrentEngine() {
+        return torrentEngine;
+    }
+
+    protected byte[] getInfoHash() {
+        return infoHash;
+    }
+
+    protected byte[] getPeerId() {
+        return peerId;
+    }
+
+    protected int getPort() {
+        return port;
+    }
+
+    protected boolean isNoPeerId() {
+        return noPeerId;
+    }
+
+    protected String getTrackerId() {
+        return trackerId;
+    }
+
+    protected void setTrackerId(String trackerId) {
+        this.trackerId = trackerId;
+    }
+
+    protected void setLeechers(long leechers) {
+        this.leechers = leechers;
+    }
+
+    protected void setSeeders(long seeders) {
+        this.seeders = seeders;
+    }
+
+    protected long getLeft() {
+        return left;
+    }
+
+    protected long getDownloaded() {
+        return downloaded;
+    }
+
+    protected long getUploaded() {
+        return uploaded;
+    }
+
+    protected boolean isShutdown() {
+        return shutdown;
+    }
+
+    protected String getUrl() {
+        return url;
+    }
+
+    protected Date getNextRequest() {
+        return nextRequest;
+    }
+
+    protected void setNextRequest(Date nextRequest) {
+        this.nextRequest = nextRequest;
+    }
+
+    protected Set<InetSocketAddress> getPeers() {
+        return peers;
+    }
+
+    protected void setPeers(Set<InetSocketAddress> peers) {
+        this.peers = peers;
     }
 }

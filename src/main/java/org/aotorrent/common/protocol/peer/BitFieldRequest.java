@@ -20,7 +20,7 @@ public class BitFieldRequest implements PeerRequest {
         this.size = size;
     }
 
-    public BitFieldRequest(byte[] message, int bitFieldSize) {
+    public BitFieldRequest(byte[] message) {
         bitField = fromByteArray(message);
         size = message.length * 8;
     }

@@ -37,7 +37,7 @@ public class TorrentEngine {
     private final Set<Piece> inProgress = Sets.newHashSet();
     private ExecutorService trackerConnectionThreads;
     private ExecutorService peersThreads;
-    private byte[] peerId = "-AO0001-000000000000".getBytes();      //TODO need to give right peerid
+    private byte[] peerId = "-AO0001-000000000000".getBytes();      //TODO need to give right peerID
     private final Torrent torrent;
 
     TorrentEngine(Torrent torrent, InetSocketAddress address) {
@@ -55,8 +55,10 @@ public class TorrentEngine {
 
         for (String trackerUrl : trackers) {
             AbstractTrackerConnection trackerConnection = AbstractTrackerConnection.createConnection(this, trackerUrl, torrent.getInfoHash(), peerId, address.getAddress(), address.getPort());
-            trackerConnectionThreads.submit(trackerConnection);
-            trackerConnections.add(trackerConnection);
+            if (trackerConnection != null) {
+                trackerConnectionThreads.submit(trackerConnection);
+                trackerConnections.add(trackerConnection);
+            }
         }
     }
 

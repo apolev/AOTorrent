@@ -5,7 +5,6 @@ import org.apache.commons.codec.digest.DigestUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.lang.ref.SoftReference;
 import java.nio.ByteBuffer;
@@ -75,14 +74,14 @@ public class Piece implements Comparable<Piece> {
         checkIsComplete();
     }
 
-    public byte[] read(int offset, int length) throws IOException, FileNotFoundException {
+    public byte[] read(int offset, int length) throws IOException {
 
         if (isComplete()) {
             ByteBuffer bb = softBuffer.get();
             if (bb == null) {
                 final byte[] read = storage.read(index, 0, pieceLength);
                 bb = ByteBuffer.wrap(read);
-                softBuffer = new SoftReference<ByteBuffer>(bb);
+                softBuffer = new SoftReference<>(bb);
 
             }
 
@@ -106,13 +105,11 @@ public class Piece implements Comparable<Piece> {
                     blockComplete.clear();
                 }
 
-                softBuffer = new SoftReference<ByteBuffer>(ByteBuffer.wrap(buffer.array()));
+                softBuffer = new SoftReference<>(ByteBuffer.wrap(buffer.array()));
 
                 buffer = null;
 
             }
-        } catch (FileNotFoundException e) {
-            LOGGER.error("Can't save piece", e);
         } catch (IOException e) {
             LOGGER.error("Can't save piece", e);
         }

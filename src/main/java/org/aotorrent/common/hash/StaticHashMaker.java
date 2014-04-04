@@ -32,11 +32,10 @@ public class StaticHashMaker {
         byte[] buffer = new byte[pieceLength];
 
         for (File file : files) {
-            FileInputStream fIS = new FileInputStream(file);
-            BufferedInputStream bIS = new BufferedInputStream(fIS);
 
-            try {
+            try (BufferedInputStream bIS = new BufferedInputStream(new FileInputStream(file))) {
                 if (counter == 0) {
+                    //noinspection ResultOfMethodCallIgnored
                     bIS.skip(offset);
                 }
 
@@ -81,10 +80,6 @@ public class StaticHashMaker {
                         }
                     }
                 }
-            } finally {
-                if (bIS != null) {
-                    bIS.close();
-                }
             }
             counter++;
         }
@@ -103,7 +98,7 @@ public class StaticHashMaker {
         private final byte[] data;
         private final Semaphore semaphore;
 
-        public HashMakerThread(byte[] data, Semaphore semaphore) {
+        private HashMakerThread(byte[] data, Semaphore semaphore) {
             this.data = data;
             this.semaphore = semaphore;
         }
