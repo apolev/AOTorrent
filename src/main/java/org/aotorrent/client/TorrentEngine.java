@@ -122,12 +122,10 @@ public class TorrentEngine {
 
     @Nullable
     public Piece getNextPiece(@NotNull BitSet bitField) { //TODO increasePeerCount()
-        Set<Piece> sorted = Sets.newTreeSet(pieces);
-        Iterator<Piece> iterator = sorted.iterator();
+        List<Piece> sorted = Lists.newArrayList(pieces);
+        Collections.sort(sorted);
 
-        for (int i = 0; i < sorted.size(); i++) {
-            Piece piece = iterator.next();
-
+        for (Piece piece : sorted) {
             synchronized (inProgress) {
                 if (bitField.get(piece.getIndex()) && !piece.isComplete() && !inProgress.contains(piece)) {
                     inProgress.add(piece);
@@ -135,6 +133,7 @@ public class TorrentEngine {
                 }
             }
         }
+
         return null;
     }
 
