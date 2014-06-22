@@ -6,6 +6,7 @@ import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.lang.ref.SoftReference;
 import java.nio.ByteBuffer;
@@ -117,7 +118,11 @@ public class Piece implements Comparable<Piece> {
                 } else {
                     blockComplete.clear();
                 }
+
+                softBuffer = new SoftReference<>(ByteBuffer.wrap(buffer.array()));
+
                 buffer = null;
+
             }
         } catch (IOException e) {
             LOGGER.error("Can't save piece", e);

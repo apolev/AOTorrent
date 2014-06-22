@@ -7,6 +7,7 @@ import org.aotorrent.common.bencode.InvalidBEncodingException;
 import org.aotorrent.common.protocol.peer.HandshakeRequest;
 import org.apache.commons.lang.ArrayUtils;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -68,6 +69,7 @@ public class TorrentClient implements Runnable {
             }
 
             while (isRunning) {
+                @SuppressWarnings("SocketOpenedButNotSafelyClosed")
                 final Socket socket = serverSocket.accept();
                 LOGGER.debug("New incoming connection from " + socket.getRemoteSocketAddress());
                 new Thread(new IncomingConnectionsDispatcher(socket)).start();
@@ -79,6 +81,7 @@ public class TorrentClient implements Runnable {
     }
 
 
+    @Nullable
     private TorrentEngine getEngineForInfoHash(byte[] infoHash) {
         for (TorrentEngine torrentEngine : torrentEngines) {
             if (ArrayUtils.isEquals(torrentEngine.getInfoHash(), infoHash)) {
@@ -92,16 +95,17 @@ public class TorrentClient implements Runnable {
 
         private final Socket socket;
 
-        public IncomingConnectionsDispatcher(Socket socket) {
+        private IncomingConnectionsDispatcher(Socket socket) {
 
             this.socket = socket;
         }
 
         @Override
         public void run() {
-            try {
-                final BufferedInputStream inputStream = new BufferedInputStream(socket.getInputStream());
-                final HandshakeRequest handshakeRequest = recieveHandshake(inputStream);
+            try (BufferedInputStream inputStream = new BufferedInputStream(socket.getInputStream())) {
+                HandshakeRequest handshakeRequest;
+
+                handshakeRequest = receiveHandshake(inputStream);
 
                 final TorrentEngine torrentEngine = getEngineForInfoHash(handshakeRequest.getInfoHash());
 
@@ -122,7 +126,7 @@ public class TorrentClient implements Runnable {
         }
 
         @NotNull
-        private HandshakeRequest recieveHandshake(@NotNull BufferedInputStream inputStream) throws IOException {
+        private HandshakeRequest receiveHandshake(@NotNull BufferedInputStream inputStream) throws IOException {
 
             final int protocolStringLength = inputStream.read();
             final byte[] bytes = new byte[protocolStringLength + 8 + Torrent.INFO_HASH_LENGTH + Torrent.PEER_ID_LENGTH];

@@ -1,11 +1,11 @@
 package org.aotorrent.common.bencode;
 
+import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -23,7 +23,7 @@ public class BEncodeParser {
     }
 
     public List<BEncodeValue> parse() throws IOException, InvalidBEncodingException {
-        List<BEncodeValue> result = new ArrayList<BEncodeValue>();
+        List<BEncodeValue> result = Lists.newArrayList();
 
         BEncodeValue temporary = getNext();
 
@@ -126,7 +126,7 @@ public class BEncodeParser {
             throw new InvalidBEncodingException("Invalid byte sequence: " + (char) iLetter);
         }
 
-        List<BEncodeValue> result = new ArrayList<BEncodeValue>();
+        List<BEncodeValue> result = Lists.newArrayList();
 
         BEncodeValue value = getNext();
 

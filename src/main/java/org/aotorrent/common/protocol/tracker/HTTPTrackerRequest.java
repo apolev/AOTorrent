@@ -44,27 +44,25 @@ public class HTTPTrackerRequest {
         String filePart = url.getFile();
         Character firstSeparator = (filePart.contains("?")) ? '&' : '?';
 
-        StringBuilder requestString = new StringBuilder(url.toString())
-                .append(firstSeparator)
-                .append("info_hash=").append(new String(URLCodec.encodeUrl(null, infoHash)).replace("+", "%20")).append('&')
-                .append("peer_id=").append(new String(URLCodec.encodeUrl(null, peerId))).append('&')
-                .append("port=").append(port).append('&')
-                .append("uploaded=").append(uploaded).append('&')
-                .append("downloaded=").append(downloaded).append('&')
-                .append("left=").append(left).append('&')
-                .append("compact=").append((compact) ? "1" : "0").append('&')
-                .append("event=").append(event).append('&')
-                .append("numwant=").append(numWant).append('&')
-                .append("trackerid=").append(trackerId);
+        String requestString = url.toString()
+                + firstSeparator
+                + "info_hash="
+                + new String(URLCodec.encodeUrl(null, infoHash)).replace("+", "%20")
+                + '&' + "peer_id=" + new String(URLCodec.encodeUrl(null, peerId))
+                + '&' + "port=" + port
+                + '&' + "uploaded=" + uploaded
+                + '&' + "downloaded=" + downloaded
+                + '&' + "left=" + left
+                + '&' + "compact=" + ((compact) ? "1" : "0")
+                + '&' + "event=" + event
+                + '&' + "numwant=" + numWant
+                + '&' + "trackerid=" + trackerId;
 
-
-        return new URL(requestString.toString());
+        return new URL(requestString);
     }
 
     private enum RequestEvent {
-        STARTED("started"),
-        STOPPED("stopped"),
-        COMPLETED("completed");
+        STARTED("started");
 
         private String event;
 

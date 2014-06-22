@@ -37,7 +37,7 @@ public class TorrentEngine {
     private final Set<Piece> inProgress = Sets.newHashSet();
     private ExecutorService trackerConnectionThreads;
     private ExecutorService peersThreads;
-    private byte[] peerId = "-AO0001-000000000000".getBytes();      //TODO need to give right peerid
+    private byte[] peerId = "-AO0001-000000000000".getBytes();      //TODO need to give right peerID
     private final Torrent torrent;
 
     TorrentEngine(Torrent torrent, InetSocketAddress address) {
@@ -55,8 +55,10 @@ public class TorrentEngine {
 
         for (String trackerUrl : trackers) {
             AbstractTrackerConnection trackerConnection = AbstractTrackerConnection.createConnection(this, trackerUrl, torrent.getInfoHash(), peerId, address.getAddress(), address.getPort());
-            trackerConnectionThreads.submit(trackerConnection);
-            trackerConnections.add(trackerConnection);
+            if (trackerConnection != null) {
+                trackerConnectionThreads.submit(trackerConnection);
+                trackerConnections.add(trackerConnection);
+            }
         }
     }
 
@@ -124,12 +126,10 @@ public class TorrentEngine {
 
     @Nullable
     public Piece getNextPiece(@NotNull BitSet bitField) { //TODO increasePeerCount()
-        Set<Piece> sorted = Sets.newTreeSet(pieces);
-        Iterator<Piece> iterator = sorted.iterator();
+        List<Piece> sorted = Lists.newArrayList(pieces);
+        Collections.sort(sorted);
 
-        for (int i = 0; i < sorted.size(); i++) {
-            Piece piece = iterator.next();
-
+        for (Piece piece : sorted) {
             synchronized (inProgress) {
                 if (bitField.get(piece.getIndex()) && !piece.isComplete() && !inProgress.contains(piece)) {
                     inProgress.add(piece);
@@ -137,6 +137,7 @@ public class TorrentEngine {
                 }
             }
         }
+
         return null;
     }
 

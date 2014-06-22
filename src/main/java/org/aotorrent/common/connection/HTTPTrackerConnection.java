@@ -20,14 +20,15 @@ import java.util.Set;
  */
 public class HTTPTrackerConnection extends AbstractTrackerConnection {
     private static final boolean COMPACT = true;
+    private static final int REQUEST_INTERVAL = (300 * 1000);
 
     public HTTPTrackerConnection(TorrentEngine torrentEngine, String url, byte[] infoHash, byte[] peerId, InetAddress ip, int port) {
         super(torrentEngine, url, infoHash, peerId, ip, port);
     }
 
     @Override
-    protected Set<InetSocketAddress> getPeers() throws MalformedURLException {
-        HTTPTrackerRequest request = new HTTPTrackerRequest(new URL(url), infoHash, peerId, port, uploaded, downloaded, left, COMPACT, noPeerId, NUM_WANT, trackerId);
+    protected void obtainPeers() throws MalformedURLException {
+        HTTPTrackerRequest request = new HTTPTrackerRequest(new URL(getUrl()), getInfoHash(), getPeerId(), getPort(), getUploaded(), getDownloaded(), getLeft(), COMPACT, isNoPeerId(), NUM_WANT, getTrackerId());
         HttpURLConnection connection = null;
         Set<InetSocketAddress> peers = Sets.newHashSet();
         try {
@@ -35,22 +36,28 @@ public class HTTPTrackerConnection extends AbstractTrackerConnection {
             connection.connect();
 
             InputStream reply = connection.getInputStream();
-            BufferedInputStream bis = new BufferedInputStream(reply);
-            HTTPTrackerResponse response = new HTTPTrackerResponse(bis);
+            HTTPTrackerResponse response;
+            try (BufferedInputStream bis = new BufferedInputStream(reply)) {
 
-            if (response.isFailed()) {
-                nextRequest = new Date(System.currentTimeMillis() + (300 * 1000));
-            } else {
-                peers = response.getPeers();
-                trackerId = response.getTrackerId();
-                seeders = response.getComplete();
-                leechers = response.getIncomplete();
-                nextRequest = new Date(System.currentTimeMillis() + (response.getInterval() * 1000));
+                response = new HTTPTrackerResponse(bis);
+
+                if (response.isFailed()) {
+                    setNextRequest(new Date(System.currentTimeMillis() + REQUEST_INTERVAL));
+                } else {
+                    setPeers(response.getPeers());
+                    setTrackerId(response.getTrackerId());
+                    setSeeders(response.getComplete());
+                    setLeechers(response.getIncomplete());
+                    setNextRequest(new Date(System.currentTimeMillis() + (response.getInterval() * 1000)));
+                }
+            } catch (InvalidBEncodingException e) {
+                synchronized (this) {
+                    setNextRequest(new Date(System.currentTimeMillis() + REQUEST_INTERVAL));
+                }
             }
-
-        } catch (IOException | InvalidBEncodingException e) {
+        } catch (IOException e) {
             synchronized (this) {
-                nextRequest = new Date(System.currentTimeMillis() + (300 * 1000));
+                setNextRequest(new Date(System.currentTimeMillis() + REQUEST_INTERVAL));
             }
         } catch (URISyntaxException e) {
             throw new MalformedURLException(e.getMessage());

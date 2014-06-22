@@ -50,7 +50,7 @@ public class HandshakeRequest implements PeerRequest {
     }
 
     @Override
-    public byte[] toTransmit() throws IOException, UnsupportedEncodingException {
+    public byte[] toTransmit() throws IOException {
         ByteArrayOutputStream os = new ByteArrayOutputStream();
         os.write(protocolString.length());
         os.write(protocolString.getBytes(Torrent.DEFAULT_TORRENT_ENCODING));
