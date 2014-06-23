@@ -66,6 +66,5 @@ public class HTTPTrackerConnection extends AbstractTrackerConnection {
                 connection.disconnect();
             }
         }
-        return peers;
     }
 }

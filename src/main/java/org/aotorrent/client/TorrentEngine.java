@@ -21,6 +21,7 @@ import java.net.SocketAddress;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadPoolExecutor;
 
 /**
  * Project: AOTorrent
@@ -205,5 +206,22 @@ public class TorrentEngine {
         peerConnections.put(incomingSocket.getRemoteSocketAddress(), peerConnection);
         peersThreads.submit(peerConnection);
 
+    }
+
+    public void removePeerConnection(SocketAddress socketAddress) {
+        if (peerConnections.containsKey(socketAddress)) {
+            peerConnections.remove(socketAddress);
+        }
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        //sb.append("Torrent: ").append(torrent).append(" ");
+        sb.append("Known peers: ").append(peerConnections.size()).append(" ");
+        sb.append("Connected peers: ").append(((ThreadPoolExecutor) peersThreads).getActiveCount()).append(" ");
+        sb.append("Pieces/Downloaded: ").append(pieces.size()).append('/').append(getBitField().cardinality()).append(" ");
+        sb.append("Size/Downloaded: ").append(torrent.getSize()).append('/').append("?").append(" ");
+        return String.valueOf(sb);
     }
 }

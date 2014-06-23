@@ -156,4 +156,10 @@ public class TorrentClient implements Runnable {
     }
 
 
+    @Override
+    public String toString() {
+        return "TorrentClient{" +
+                "torrentEngines=" + torrentEngines +
+                '}';
+    }
 }

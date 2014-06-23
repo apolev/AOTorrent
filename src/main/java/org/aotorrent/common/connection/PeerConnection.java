@@ -88,67 +88,75 @@ public class PeerConnection implements Runnable {
             Socket socket;
 
             if (!incomingConnection) {
+                LOGGER.debug("Connecting to : " + ((InetSocketAddress) socketAddress).getAddress().getHostAddress() + ":" + ((InetSocketAddress) socketAddress).getPort());
                 socket = new Socket(((InetSocketAddress) socketAddress).getAddress(), ((InetSocketAddress) socketAddress).getPort());
+                LOGGER.debug("Connected to : " + ((InetSocketAddress) socketAddress).getAddress().getHostAddress() + ":" + ((InetSocketAddress) socketAddress).getPort());
             } else {
                 socket = incomingSocket;
             }
 
             assert socket != null;
 
-            try {
-                try (BufferedInputStream inputStream = new BufferedInputStream(socket.getInputStream())) {
-                    outputStream = new BufferedOutputStream(socket.getOutputStream());
-                    try {
-                        if (handshake(inputStream)) {
-                            setHandshakeDone();
-                        } else {
-                            return;
+            try (BufferedInputStream inputStream = new BufferedInputStream(socket.getInputStream())) {
+
+                outputStream = new BufferedOutputStream(socket.getOutputStream());
+
+                try {
+
+                    if (handshake(inputStream)) {
+                        setHandshakeDone();
+                    } else {
+                        return;
+                    }
+
+                    final BitSet torrentEngineBitField = torrentEngine.getBitField();
+
+                    final PeerRequest bitFieldRequest = new BitFieldRequest(torrentEngineBitField, torrentEngine.getPieceCount());
+                    sendToPeer(bitFieldRequest);
+
+                    IncomingMessagesHandler messagesHandler = new IncomingMessagesHandler(inputStream);
+
+                    messagesHandlerThread = new Thread(messagesHandler);
+                    messagesHandlerThread.start();
+
+                    while (isRunning) {
+                        try {
+                            final ConnectionMessage event = incomingMessages.take();
+                            event.processMessage(this);
+                        } catch (InterruptedException e) {
+                            LOGGER.debug("Interrupted!");
                         }
+                    }
+                } catch (PeerProtocolException e) {
+                    LOGGER.error("Peer acting not good: ", e);
+                } finally {
+                    LOGGER.debug("Closing connection to peer " + socketAddress);
+                    if (messagesHandlerThread != null) {
+                        messagesHandlerThread.interrupt();
 
-                        final BitSet torrentEngineBitField = torrentEngine.getBitField();
-
-                        final PeerRequest bitFieldRequest = new BitFieldRequest(torrentEngineBitField, torrentEngine.getPieceCount());
-                        sendToPeer(bitFieldRequest);
-
-                        IncomingMessagesHandler messagesHandler = new IncomingMessagesHandler(inputStream);
-
-                        messagesHandlerThread = new Thread(messagesHandler);
-                        messagesHandlerThread.start();
-
-                        while (isRunning) {
-                            try {
-                                final ConnectionMessage event = incomingMessages.take();
-                                event.processMessage(this);
-                            } catch (InterruptedException e) {
-                                LOGGER.debug("Interrupted!");
-                            }
-                        }
-                    } finally {
-                        LOGGER.debug("Closing connection to peer " + socketAddress);
-                        if (outputStream != null) {
-                            outputStream.close();
-                        }
+                    }
+                    if (outputStream != null) {
+                        outputStream.close();
                     }
                 }
             } finally {
-                if (socket != null) {
-                    try {
-                        socket.close();
-                    } catch (IOException e) {
-                        LOGGER.error("Closing peer connection error: ", e);
-                    }
+                try {
+                    socket.close();
+                } catch (IOException e) {
+                    LOGGER.error("Closing peer connection error: ", e);
                 }
             }
         } catch (UnsupportedEncodingException e) {
             LOGGER.error(e.getLocalizedMessage(), e);
         } catch (IOException e) {
-            LOGGER.error("Creating peer connection error to host: " + this.socketAddress, e);
+            LOGGER.error("Creating peer connection error to host: " + this.socketAddress.toString(), e);
         }
+
+        torrentEngine.removePeerConnection(socketAddress);
     }
 
     private void sendToPeer(PeerRequest request) throws IOException {
         if (outputStream != null) {
-            LOGGER.debug("Sending " + request + " request.");
             outputStream.write(request.toTransmit());
             outputStream.flush();
         } else {
@@ -179,6 +187,8 @@ public class PeerConnection implements Runnable {
                 final byte[] bytes = piece.read(begin, length);
                 PeerRequest pieceRequest = new PieceRequest(index, begin, bytes);
                 sendToPeer(pieceRequest);
+            } catch (FileNotFoundException e) {
+                LOGGER.error("file not found", e);
             } catch (IOException e) {
                 LOGGER.error("file read error", e);
             }
@@ -209,7 +219,7 @@ public class PeerConnection implements Runnable {
         }
     }
 
-    private boolean handshake(InputStream inputStream) throws IOException {
+    private boolean handshake(@NotNull InputStream inputStream) throws IOException, PeerProtocolException {
         final PeerRequest peerHandshake = new HandshakeRequest(torrentEngine.getInfoHash(), torrentEngine.getPeerId());
 
         sendToPeer(peerHandshake);
@@ -232,64 +242,44 @@ public class PeerConnection implements Runnable {
         final HandshakeRequest peerHandshakeReply = new HandshakeRequest(handshakeReply);
 
         return peerHandshakeReply.isOk(torrentEngine.getInfoHash());
+
     }
 
     private void setHandshakeDone() {
         this.handshakeDone = true;
     }
 
-    private void choke() {
-        try {
-            PeerRequest chokeRequest = new ChokeRequest();
+    private void choke() throws IOException {
+        PeerRequest chokeRequest = new ChokeRequest();
             sendToPeer(chokeRequest);
 
             choking.set(true);
-        } catch (IOException e) {
-            LOGGER.error("can't send choke request", e);
-        }
     }
 
-    private void unChoke() {
-        try {
-            PeerRequest unChokeRequest = new UnChokeRequest();
+    private void unChoke() throws IOException {
+        PeerRequest unChokeRequest = new UnChokeRequest();
             sendToPeer(unChokeRequest);
 
             choking.set(false);
-        } catch (IOException e) {
-            LOGGER.error("can't send unChoke request", e);
-        }
     }
 
-    private void interested() {
-        try {
-            PeerRequest interestedRequest = new InterestedRequest();
+    private void interested() throws IOException {
+        PeerRequest interestedRequest = new InterestedRequest();
             sendToPeer(interestedRequest);
 
             interested.set(true);
-        } catch (IOException e) {
-            LOGGER.error("can't send interested request", e);
-        }
     }
 
-    private void notInterested() {
-        try {
-            PeerRequest notInterestedRequest = new NotInterestedRequest();
+    private void notInterested() throws IOException {
+        PeerRequest notInterestedRequest = new NotInterestedRequest();
             sendToPeer(notInterestedRequest);
 
             interested.set(false);
-        } catch (IOException e) {
-            LOGGER.error("can't send not interested request", e);
-        }
     }
 
-    private void haveMessage(int pieceIndex) {
-        try {
-            PeerRequest request = new HaveRequest(pieceIndex);
+    private void haveMessage(int pieceIndex) throws IOException {
+        PeerRequest request = new HaveRequest(pieceIndex);
             sendToPeer(request);
-
-        } catch (IOException e) {
-            LOGGER.error("can't send not interested request", e);
-        }
     }
 
     private void startDownload() {
@@ -324,6 +314,7 @@ public class PeerConnection implements Runnable {
         }
 
         if (piecesInProgress.isEmpty()) {
+            LOGGER.info("Nothing else to download.");
             isDownloading = false;
         }
     }
@@ -364,7 +355,7 @@ public class PeerConnection implements Runnable {
         }
     }
 
-    public void processMessage(SendHaveMessage sendHaveMessage) {
+    public void processMessage(SendHaveMessage sendHaveMessage) throws IOException {
         haveMessage(sendHaveMessage.getPieceIndex());
     }
 
@@ -372,14 +363,15 @@ public class PeerConnection implements Runnable {
         incomingMessages.add(message);
     }
 
-    public void processMessage(@SuppressWarnings("unused") PeerInterestedMessage peerInterestedMessage) {
+    public void processMessage(@SuppressWarnings("UnusedParameters") PeerInterestedMessage peerInterestedMessage) throws IOException {
         unChoke();
     }
 
     private class IncomingMessagesHandler implements Runnable {
+        @NotNull
         private final InputStream inputStream;
 
-        private IncomingMessagesHandler(InputStream inputStream) {
+        private IncomingMessagesHandler(@NotNull InputStream inputStream) {
             this.inputStream = inputStream;
         }
 
@@ -402,7 +394,7 @@ public class PeerConnection implements Runnable {
 
                         RequestType requestType = RequestType.from(inputStream.read());
 
-                        LOGGER.debug("Request " + requestType + " received from " + socketAddress);
+                        //LOGGER.debug("Request " + requestType + " received from " + socketAddress);
 
                         byte[] message = new byte[messageLength];
 
@@ -453,9 +445,8 @@ public class PeerConnection implements Runnable {
             } catch (SocketException e) {
                 LOGGER.debug("Connection reset");
             } catch (IOException e) {
-                e.printStackTrace();
-            } finally {
                 incomingMessages.add(new StopMessage());
+            } finally {
                 LOGGER.debug("Closing connection to " + socketAddress + "(incoming thread)");
             }
         }

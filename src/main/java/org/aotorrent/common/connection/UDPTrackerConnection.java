@@ -9,7 +9,6 @@ import org.aotorrent.client.TorrentEngine;
 import java.io.IOException;
 import java.net.*;
 import java.nio.ByteBuffer;
-import java.util.Collections;
 import java.util.Date;
 import java.util.Random;
 import java.util.Set;
@@ -28,7 +27,7 @@ public class UDPTrackerConnection extends AbstractTrackerConnection {
     }
 
     @Override
-    protected Set<InetSocketAddress> getPeers() {
+    protected void obtainPeers() {
 
         final Random random = new Random(System.currentTimeMillis());
 
@@ -54,7 +53,7 @@ public class UDPTrackerConnection extends AbstractTrackerConnection {
             DatagramPacket announceConnection = new DatagramPacket(announceRequest, announceRequest.length, ipAddress, port);
             clientSocket.send(announceConnection);
 
-            return announceReply(connectionId, transactionId, clientSocket);
+            setPeers(announceReply(connectionId, transactionId, clientSocket));
 
 
         } catch (UnknownHostException e) {
@@ -62,8 +61,6 @@ public class UDPTrackerConnection extends AbstractTrackerConnection {
         } catch (IOException e) {
             e.printStackTrace();
         }
-
-        return Collections.emptySet();
     }
 
     private byte[] connectRequest(final int transactionId) {

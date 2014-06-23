@@ -63,7 +63,7 @@ public class FileStorage {
     }
 
     public void store(int pieceIndex, ByteBuffer byteBuffer) throws IOException {
-        List<StorageFilesInfo> storageFiles = getAffectedFiles(pieceIndex);
+        Collection<StorageFilesInfo> storageFiles = getAffectedFiles(pieceIndex);
 
         for (StorageFilesInfo storageFile : storageFiles) {
 

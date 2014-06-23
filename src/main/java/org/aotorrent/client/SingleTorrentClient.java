@@ -23,15 +23,15 @@ public class SingleTorrentClient {
             InputStream is = new BufferedInputStream(new FileInputStream(filename));
             Torrent torrent = new Torrent(is, args[1]);
 
-//            TorrentEngine torrentEngine = new TorrentEngine(torrent);
-//            new Thread(torrentEngine).start();
-
-            TorrentClient torrentClient = new TorrentClient(args[0], args[1], InetSocketAddress.createUnresolved("127.0.0.1", 6968));
+            TorrentClient torrentClient = new TorrentClient(args[0], args[1], new InetSocketAddress("127.0.0.1", 6968));
 
             final Thread thread = new Thread(torrentClient);
 
             thread.start();
-
+            while (thread.isAlive()) {
+                Thread.sleep(10000);
+                System.out.println("torrentClient = " + torrentClient);
+            }
             thread.join();
 
 
