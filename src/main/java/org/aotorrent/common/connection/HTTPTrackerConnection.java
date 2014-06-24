@@ -1,6 +1,5 @@
 package org.aotorrent.common.connection;
 
-import com.google.common.collect.Sets;
 import org.aotorrent.client.TorrentEngine;
 import org.aotorrent.common.bencode.InvalidBEncodingException;
 import org.aotorrent.common.protocol.tracker.HTTPTrackerRequest;
@@ -11,7 +10,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.*;
 import java.util.Date;
-import java.util.Set;
 
 /**
  * Project: AOTorrent
@@ -30,7 +28,6 @@ public class HTTPTrackerConnection extends AbstractTrackerConnection {
     protected void obtainPeers() throws MalformedURLException {
         HTTPTrackerRequest request = new HTTPTrackerRequest(new URL(getUrl()), getInfoHash(), getPeerId(), getPort(), getUploaded(), getDownloaded(), getLeft(), COMPACT, isNoPeerId(), NUM_WANT, getTrackerId());
         HttpURLConnection connection = null;
-        Set<InetSocketAddress> peers = Sets.newHashSet();
         try {
             connection = (HttpURLConnection) request.createRequest().openConnection();
             connection.connect();

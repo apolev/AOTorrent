@@ -11,6 +11,9 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Map;
 
+import static junit.framework.Assert.assertEquals;
+import static junit.framework.Assert.assertNotNull;
+
 /**
  * User: dnapolov
  * Date: 11/18/13
@@ -22,21 +25,24 @@ public class ParserTest {
     public void numberParseTest() throws IOException, InvalidBEncodingException {
         String input = "i100500e";
         BEncodeValue value = BEncodeParser.parseOne(new ByteArrayInputStream(input.getBytes()));
-        org.junit.Assert.assertEquals(100500, value.getLong());
+        assertNotNull(value);
+        assertEquals(100500, value.getLong());
     }
 
     @Test
     public void stringParseTest() throws IOException, InvalidBEncodingException {
         String input = "10:yoyoyoyoyo";
         BEncodeValue value = BEncodeParser.parseOne(new ByteArrayInputStream(input.getBytes()));
-        org.junit.Assert.assertEquals("yoyoyoyoyo", value.getString());
+        assertNotNull(value);
+        assertEquals("yoyoyoyoyo", value.getString());
     }
 
     @Test
     public void listParseTest() throws IOException, InvalidBEncodingException {
         String input = "l10:yoyoyoyoyoi100500ee";
         BEncodeValue value = BEncodeParser.parseOne(new ByteArrayInputStream(input.getBytes()));
-        org.junit.Assert.assertEquals(value, Arrays.asList(new BEncodeValue("yoyoyoyoyo"), new BEncodeValue(100500)));
+        assertNotNull(value);
+        assertEquals(value.getList(), Arrays.asList(new BEncodeValue("yoyoyoyoyo"), new BEncodeValue(100500)));
     }
 
     @Test
@@ -45,6 +51,7 @@ public class ParserTest {
         BEncodeValue value = BEncodeParser.parseOne(new ByteArrayInputStream(input.getBytes()));
         Map<String, BEncodeValue> valueMap = Maps.newHashMap();
         valueMap.put("first", new BEncodeValue(Arrays.asList(new BEncodeValue("yoyoyoyoyo"), new BEncodeValue(100500))));
-        org.junit.Assert.assertEquals(value, valueMap);
+        assertNotNull(value);
+        assertEquals(value.getMap(), valueMap);
     }
 }

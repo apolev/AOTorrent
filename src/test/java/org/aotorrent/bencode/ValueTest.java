@@ -11,6 +11,9 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
+import static junit.framework.Assert.assertEquals;
+import static junit.framework.Assert.assertNull;
+
 /**
  * User: dnapolov
  * Date: 11/18/13
@@ -27,7 +30,7 @@ public class ValueTest {
         long testValue = Long.MAX_VALUE;
         BEncodeValue value = new BEncodeValue(testValue);
 
-        org.junit.Assert.assertEquals(value, testValue);
+        assertEquals(value.getLong(), testValue);
     }
 
     @Test
@@ -35,7 +38,7 @@ public class ValueTest {
         String stringValue = "Test string";
         BEncodeValue value = new BEncodeValue(stringValue);
 
-        org.junit.Assert.assertEquals(value, stringValue);
+        assertEquals(value.getString(), stringValue);
     }
 
     @Test
@@ -43,7 +46,7 @@ public class ValueTest {
         List<BEncodeValue> listValue = Arrays.asList(new BEncodeValue(1), new BEncodeValue(2), new BEncodeValue("String"));
         BEncodeValue value = new BEncodeValue(listValue);
 
-        org.junit.Assert.assertEquals(value, listValue);
+        assertEquals(value.getList(), listValue);
     }
 
     @Test
@@ -57,15 +60,15 @@ public class ValueTest {
 
         BEncodeValue value = new BEncodeValue(mapValue);
 
-        org.junit.Assert.assertEquals(value, mapValue);
+        assertEquals(value.getMap(), mapValue);
     }
 
     @Test
     public void testNullValue() {
         BEncodeValue value = new BEncodeValue(null);
 
-        org.junit.Assert.assertNull(value.getValue());
-        org.junit.Assert.assertNull(value.getValueClass());
+        assertNull(value.getValue());
+        assertNull(value.getValueClass());
     }
 
     @Test
@@ -74,6 +77,6 @@ public class ValueTest {
 
         exception.expect(InvalidBEncodingException.class);
 
-        Long longValue = value.getLong();
+        value.getLong();
     }
 }
