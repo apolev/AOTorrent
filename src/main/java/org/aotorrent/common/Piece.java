@@ -1,6 +1,7 @@
 package org.aotorrent.common;
 
 import org.aotorrent.common.storage.FileStorage;
+import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
@@ -51,6 +52,7 @@ public class Piece implements Comparable<Piece> {
             checkIsComplete(true);
         } catch (IOException e) {
             //file(s) are not exist
+            LOGGER.error("File not exist");
         }
     }
 
@@ -93,7 +95,8 @@ public class Piece implements Comparable<Piece> {
             }
 
             byte[] buf = new byte[length];
-            bb.get(buf, offset, length);
+            bb.position(offset);
+            bb.get(buf);
             return buf;
         } else {
             return new byte[0];
@@ -106,10 +109,13 @@ public class Piece implements Comparable<Piece> {
                 byte[] pieceHash = DigestUtils.sha1(buffer.array());
 
                 if (Arrays.equals(pieceHash, hash)) {
-                    storage.store(index, buffer);
+                    if (!initial) {
+                        storage.store(index, buffer);
+                    }
                     complete = true;
                     softBuffer = new SoftReference<>(ByteBuffer.wrap(buffer.array()));
                 } else {
+                    LOGGER.error("Piece index: " + index + " hashes are not match original:" + Hex.encodeHexString(hash) + " actual: " + Hex.encodeHexString(pieceHash));
                     blockComplete.clear();
                 }
 

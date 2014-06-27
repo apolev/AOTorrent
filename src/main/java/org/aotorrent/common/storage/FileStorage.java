@@ -87,41 +87,50 @@ public class FileStorage {
 
     public byte[] read(int pieceIndex, int length) throws IOException {
 
-        long pieceStartPosition = pieceIndex * pieceLength;
-        long pieceEndPosition = pieceStartPosition + pieceLength;
+        //long pieceStartPosition = pieceIndex * pieceLength; //Global in-torrent position index
+        //long pieceEndPosition = pieceStartPosition + pieceLength;
 
         Collection<StorageFilesInfo> storageFiles = getAffectedFiles(pieceIndex);
         ByteBuffer buf = ByteBuffer.allocate(length);
 
         for (StorageFilesInfo storageFile : storageFiles) {
-
-            if (storageFile.getFileOffset() <= pieceStartPosition && storageFile.getLength() + storageFile.getFileOffset() > pieceEndPosition) { //File occupies all piece
-                try (RandomAccessFile randomAccessFile = new RandomAccessFile(path.getCanonicalPath() + File.separator + storageFile.getFile().getCanonicalPath(), "rw")) {
+            try (RandomAccessFile randomAccessFile = new RandomAccessFile(storageFile.getFile(), "r")) {
+                try (FileChannel fileChannel = randomAccessFile.getChannel()) {
+                    ByteBuffer local = ByteBuffer.allocate((int) storageFile.getLength());
+                    fileChannel.read(local, storageFile.getFileOffset());
+                    local.flip();
+                    buf.put(local);
+                }
+            }
+/*
+            if (storageFile.getFileOffset() <= pieceStartPosition && storageFile.getLength() + storageFile.getFileOffset() == pieceEndPosition) { //File occupies all piece
+                try (RandomAccessFile randomAccessFile = new RandomAccessFile(storageFile.getFile(), "rw")) {
                     try (FileChannel fileChannel = randomAccessFile.getChannel()) {
                         fileChannel.position(pieceStartPosition - storageFile.getFileOffset());
                         fileChannel.read(buf, pieceLength);
                     }
                 }
-            } else if (storageFile.getFileOffset() > pieceStartPosition && storageFile.getLength() + storageFile.getFileOffset() > pieceEndPosition) { //File lays in the end of piece
-                try (RandomAccessFile randomAccessFile = new RandomAccessFile(path.getCanonicalPath() + File.separator + storageFile.getFile().getCanonicalPath(), "rw")) {
+            } else if (storageFile.getFileOffset() > pieceStartPosition && storageFile.getLength() + storageFile.getFileOffset() == pieceEndPosition) { //File lays in the end of piece
+                try (RandomAccessFile randomAccessFile = new RandomAccessFile(storageFile.getFile(), "rw")) {
                     try (FileChannel fileChannel = randomAccessFile.getChannel()) {
+                        fileChannel.position(storageFile.getFileOffset() - pieceStartPosition);
                         fileChannel.read(buf, pieceEndPosition - storageFile.getFileOffset());
                     }
                 }
             } else if (storageFile.getFileOffset() <= pieceStartPosition && storageFile.getLength() + storageFile.getFileOffset() <= pieceEndPosition) { //File starts or exactly fit into the piece
-                try (RandomAccessFile randomAccessFile = new RandomAccessFile(path.getCanonicalPath() + File.separator + storageFile.getFile().getCanonicalPath(), "rw")) {
+                try (RandomAccessFile randomAccessFile = new RandomAccessFile(storageFile.getFile(), "rw")) {
                     try (FileChannel fileChannel = randomAccessFile.getChannel()) {
                         fileChannel.position(pieceStartPosition - storageFile.getFileOffset());
                         fileChannel.read(buf, storageFile.getLength() - (pieceStartPosition - storageFile.getFileOffset()));
                     }
                 }
-            } else if (storageFile.getFileOffset() > pieceStartPosition && storageFile.getLength() + storageFile.getFileOffset() <= pieceEndPosition) { //File lays in piece
-                try (RandomAccessFile randomAccessFile = new RandomAccessFile(path.getCanonicalPath() + File.separator + storageFile.getFile().getCanonicalPath(), "rw")) {
+            } else if (storageFile.getFileOffset() > pieceStartPosition && storageFile.getLength() + storageFile.getFileOffset() < pieceEndPosition) { //File lays in piece
+                try (RandomAccessFile randomAccessFile = new RandomAccessFile(storageFile.getFile(), "rw")) {
                     try (FileChannel fileChannel = randomAccessFile.getChannel()) {
                         fileChannel.read(buf, storageFile.getLength());
                     }
                 }
-            }
+            }*/
         }
         return buf.array();
     }

@@ -120,7 +120,7 @@ public class Torrent {
             this.size = allFilesSize;
         } else {
             TorrentFile tf = new TorrentFile(
-                    info.get("name").getString(),
+                    downloadPath + info.get("name").getString(),
                     info.get("length").getLong(),
                     "");
             files.add(tf);
