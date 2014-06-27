@@ -6,7 +6,6 @@ import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.lang.ref.SoftReference;
 import java.nio.ByteBuffer;
@@ -47,7 +46,7 @@ public class Piece implements Comparable<Piece> {
 
     private void checkExistingData() {
         try {
-            final byte[] bytes = storage.read(index, 0, pieceLength);
+            final byte[] bytes = storage.read(index, pieceLength);
             buffer = ByteBuffer.wrap(bytes);
             checkIsComplete(true);
         } catch (IOException e) {
@@ -75,11 +74,6 @@ public class Piece implements Comparable<Piece> {
         int dataBlocks = (int) Math.ceil((double) data.length / (double) DEFAULT_BLOCK_LENGTH);
         int blockOffset = offset / DEFAULT_BLOCK_LENGTH;
 
-        if (buffer == null) {
-            buffer = ByteBuffer.allocate(pieceLength);
-            buffer.flip();
-        }
-
         for (int i = 0; i < dataBlocks; i++) {
             blockComplete.set(i + blockOffset);
         }
@@ -92,7 +86,7 @@ public class Piece implements Comparable<Piece> {
         if (isComplete()) {
             ByteBuffer bb = softBuffer.get();
             if (bb == null) {
-                final byte[] read = storage.read(index, 0, pieceLength);
+                final byte[] read = storage.read(index, pieceLength);
                 bb = ByteBuffer.wrap(read);
                 softBuffer = new SoftReference<>(bb);
 
@@ -113,16 +107,13 @@ public class Piece implements Comparable<Piece> {
 
                 if (Arrays.equals(pieceHash, hash)) {
                     storage.store(index, buffer);
-                    softBuffer = new SoftReference<>(ByteBuffer.wrap(buffer.array()));
                     complete = true;
+                    softBuffer = new SoftReference<>(ByteBuffer.wrap(buffer.array()));
                 } else {
                     blockComplete.clear();
                 }
 
-                softBuffer = new SoftReference<>(ByteBuffer.wrap(buffer.array()));
-
                 buffer = null;
-
             }
         } catch (IOException e) {
             LOGGER.error("Can't save piece", e);
@@ -141,11 +132,20 @@ public class Piece implements Comparable<Piece> {
         return complete;
     }
 
+    public int getBlockCount() {
+        return (int) Math.ceil((double) pieceLength / (double) DEFAULT_BLOCK_LENGTH);
+    }
+
+    public int getIndex() {
+        return index;
+    }
+
+    //TODO make Piece comparator!
     @Override
     public int compareTo(@NotNull Piece otherPiece) {
         if (isComplete() == otherPiece.isComplete()) {
             if (peerCount == otherPiece.getPeerCount()) {
-                return Arrays.hashCode(hash) - Arrays.hashCode(otherPiece.getHash());
+                return 0;
             }
             return peerCount - otherPiece.getPeerCount();
         } else {
@@ -155,14 +155,6 @@ public class Piece implements Comparable<Piece> {
                 return -1;
             }
         }
-    }
-
-    public int getBlockCount() {
-        return (int) Math.ceil((double) pieceLength / (double) DEFAULT_BLOCK_LENGTH);
-    }
-
-    public int getIndex() {
-        return index;
     }
 
     @Override

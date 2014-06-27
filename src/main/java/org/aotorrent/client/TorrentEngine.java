@@ -98,7 +98,7 @@ public class TorrentEngine {
 
         pieceList.add(piece);
 
-        return pieceList;
+        return Collections.unmodifiableList(pieceList);
     }
 
     void init() throws UnsupportedEncodingException {
@@ -220,8 +220,9 @@ public class TorrentEngine {
         //sb.append("Torrent: ").append(torrent).append(" ");
         sb.append("Known peers: ").append(peerConnections.size()).append(" ");
         sb.append("Connected peers: ").append(((ThreadPoolExecutor) peersThreads).getActiveCount()).append(" ");
-        sb.append("Pieces/Downloaded: ").append(pieces.size()).append('/').append(getBitField().cardinality()).append(" ");
-        sb.append("Size/Downloaded: ").append(torrent.getSize()).append('/').append("?").append(" ");
+        sb.append("Pieces(Downloaded/Total(PieceSize)): ").append(getBitField().cardinality()).append('/').append(pieces.size()).append("(").append(torrent.getPieceLength()).append(")").append(" ");
+        sb.append("Size(Downloaded/Total): ").append(getBitField().cardinality() * torrent.getPieceLength() / 1024).append('/').append(torrent.getSize() / 1024).append(" ");
+        sb.append("(").append(getBitField().cardinality() * 100 / pieces.size()).append("%)");
         return String.valueOf(sb);
     }
 }

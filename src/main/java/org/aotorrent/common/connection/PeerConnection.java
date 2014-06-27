@@ -31,6 +31,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  */
 public class PeerConnection implements Runnable {
 
+    public static final int CONNECTION_TIMEOUT = 20000;
     private static final Logger LOGGER = LoggerFactory.getLogger(PeerConnection.class);
     private final boolean incomingConnection;
     @Nullable
@@ -59,7 +60,7 @@ public class PeerConnection implements Runnable {
     private BufferedOutputStream outputStream = null;
     @NotNull
     private final Set<Piece> piecesInProgress = Sets.newHashSet();
-    private final int piecesMax;
+    private final int piecesMax = 1; //TODO We are loosing data blocks if it is greater than 1 on torrents with big piece size(2097152, Need investigation)
     @NotNull
     private final LinkedBlockingQueue<ConnectionMessage> incomingMessages = new LinkedBlockingQueue<>();
 
@@ -67,7 +68,6 @@ public class PeerConnection implements Runnable {
         this.socketAddress = socketAddress;
         this.torrentEngine = torrentEngine;
         this.bitField = new BitSet();
-        this.piecesMax = 10;
         incomingConnection = false;
         incomingSocket = null;
     }
@@ -78,7 +78,6 @@ public class PeerConnection implements Runnable {
         this.socketAddress = incomingSocket.getLocalSocketAddress();
         this.torrentEngine = torrentEngine;
         this.bitField = new BitSet();
-        this.piecesMax = 10;
     }
 
     @Override
@@ -89,13 +88,16 @@ public class PeerConnection implements Runnable {
 
             if (!incomingConnection) {
                 LOGGER.debug("Connecting to : " + ((InetSocketAddress) socketAddress).getAddress().getHostAddress() + ":" + ((InetSocketAddress) socketAddress).getPort());
-                socket = new Socket(((InetSocketAddress) socketAddress).getAddress(), ((InetSocketAddress) socketAddress).getPort());
-                LOGGER.debug("Connected to : " + ((InetSocketAddress) socketAddress).getAddress().getHostAddress() + ":" + ((InetSocketAddress) socketAddress).getPort());
+                socket = new Socket();
+                socket.connect(socketAddress, CONNECTION_TIMEOUT);
+                socket.setSoTimeout(CONNECTION_TIMEOUT);
+                LOGGER.debug("Connected to : " + ((InetSocketAddress) socketAddress).getAddress().getHostAddress() + ":" + ((InetSocketAddress) socketAddress).getPort() + " ReceiveBufferSize: " + socket.getReceiveBufferSize());
             } else {
                 socket = incomingSocket;
             }
 
             assert socket != null;
+
 
             try (BufferedInputStream inputStream = new BufferedInputStream(socket.getInputStream())) {
 
@@ -106,6 +108,7 @@ public class PeerConnection implements Runnable {
                     if (handshake(inputStream)) {
                         setHandshakeDone();
                     } else {
+                        LOGGER.error("Handshake failed");
                         return;
                     }
 
@@ -120,11 +123,14 @@ public class PeerConnection implements Runnable {
                     messagesHandlerThread.start();
 
                     while (isRunning) {
+                        ConnectionMessage event = null;
                         try {
-                            final ConnectionMessage event = incomingMessages.take();
+                            event = incomingMessages.take();
                             event.processMessage(this);
                         } catch (InterruptedException e) {
                             LOGGER.debug("Interrupted!");
+                        } catch (IOException e) {
+                            LOGGER.error("Processing event " + event + " error");
                         }
                     }
                 } catch (PeerProtocolException e) {
@@ -132,11 +138,20 @@ public class PeerConnection implements Runnable {
                 } finally {
                     LOGGER.debug("Closing connection to peer " + socketAddress);
                     if (messagesHandlerThread != null) {
-                        messagesHandlerThread.interrupt();
+                        try {
+                            messagesHandlerThread.interrupt();
+                            messagesHandlerThread.join();
+                        } catch (InterruptedException e) {
+                            LOGGER.error("Error interrupting incoming messages thread", e);
+                        }
 
-                    }
+                    } 
                     if (outputStream != null) {
-                        outputStream.close();
+                        try {
+                            outputStream.close();
+                        } catch (IOException e) {
+                            LOGGER.error("Closing output stream error", e);
+                        }
                     }
                 }
             } finally {
@@ -214,6 +229,7 @@ public class PeerConnection implements Runnable {
 
                 piecesInProgress.add(piece);
             } else {
+                LOGGER.info("TorrentEngine don't gives us new pieces to download");
                 break;
             }
         }
@@ -310,12 +326,14 @@ public class PeerConnection implements Runnable {
                 piecesInProgress.clear();
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            LOGGER.error("Request of new blocks failed", e);
         }
 
         if (piecesInProgress.isEmpty()) {
             LOGGER.info("Nothing else to download.");
             isDownloading = false;
+        } else {
+            isDownloading = true;
         }
     }
 
@@ -342,9 +360,15 @@ public class PeerConnection implements Runnable {
     }
 
     public void processMessage(@SuppressWarnings("unused") StopMessage stopMessage) {
+        LOGGER.info("Stop message processed");
         isRunning = false;
         if (messagesHandlerThread != null) {
-            messagesHandlerThread.interrupt();
+            try {
+                messagesHandlerThread.interrupt();
+                messagesHandlerThread.join();
+            } catch (InterruptedException e) {
+                LOGGER.error("Error interrupting incoming messages thread", e);
+            }
         }
         Thread.currentThread().interrupt();
     }
@@ -394,7 +418,9 @@ public class PeerConnection implements Runnable {
 
                         RequestType requestType = RequestType.from(inputStream.read());
 
-                        //LOGGER.debug("Request " + requestType + " received from " + socketAddress);
+                        if (requestType != RequestType.PIECE) {
+                            LOGGER.debug("Request " + requestType + " received from " + socketAddress);
+                        }
 
                         byte[] message = new byte[messageLength];
 
@@ -443,12 +469,14 @@ public class PeerConnection implements Runnable {
                 }
 
             } catch (SocketException e) {
-                LOGGER.debug("Connection reset");
+                LOGGER.debug("Connection reset", e);
             } catch (IOException e) {
-                incomingMessages.add(new StopMessage());
+                LOGGER.error("IOException on " + socketAddress + "(incoming thread)", e);
             } finally {
                 LOGGER.debug("Closing connection to " + socketAddress + "(incoming thread)");
+                incomingMessages.add(new StopMessage());
             }
+
         }
 
         private void receivedInterested() {

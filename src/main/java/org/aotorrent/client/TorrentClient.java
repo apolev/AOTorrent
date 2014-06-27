@@ -20,7 +20,9 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Created by dmitry on 3/13/14.
+ * Project: AOTorrent
+ * User:    dmitry
+ * Date:    3/13/14.
  */
 public class TorrentClient implements Runnable {
     private static final Logger LOGGER = LoggerFactory.getLogger(TorrentClient.class);
@@ -69,7 +71,6 @@ public class TorrentClient implements Runnable {
             }
 
             while (isRunning) {
-                @SuppressWarnings("SocketOpenedButNotSafelyClosed")
                 final Socket socket = serverSocket.accept();
                 LOGGER.debug("New incoming connection from " + socket.getRemoteSocketAddress());
                 new Thread(new IncomingConnectionsDispatcher(socket)).start();
@@ -154,7 +155,6 @@ public class TorrentClient implements Runnable {
         }
 
     }
-
 
     @Override
     public String toString() {
